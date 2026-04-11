@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<div class="mob-overlay" id="mobOverlay"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <div class="logo">
+      <span class="logo-mark">✦</span>
+      <span class="logo-label">TaskFlow</span>
+    </div>
+    <button class="icon-btn sidebar-close-btn" id="sidebarCloseBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <nav class="snav">
+    <p class="nav-label">WORKSPACE</p>
+    <ul class="nav-list">
+      <li><a href="#" class="nav-link active" data-view="all">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        All Tasks <span class="nb" id="badge-all">0</span>
+      </a></li>
+      <li><a href="#" class="nav-link" data-view="my">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        My Tasks <span class="nb" id="badge-my">0</span>
+      </a></li>
+      <li><a href="#" class="nav-link" data-view="team">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6"/><path d="M22 20c0-3.3-3-6-7-6"/></svg>
+        Team Tasks <span class="nb" id="badge-team">0</span>
+      </a></li>
+      <li><a href="#" class="nav-link" data-view="overdue">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Overdue <span class="nb nb-red" id="badge-overdue">0</span>
+      </a></li>
+      <li><a href="#" class="nav-link" data-view="completed">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6L9 17l-5-5"/></svg>
+        Completed <span class="nb nb-green" id="badge-completed">0</span>
+      </a></li>
+    </ul>
+
+    <p class="nav-label" style="margin-top:24px">TEAM</p>
+    <ul class="nav-list" id="employeeNav"></ul>
+    <button class="add-emp-btn" id="addEmployeeBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 5v14M5 12h14"/></svg>
+      Add Employee
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="av av-indigo" id="userAvatar">M</div>
+      <div>
+        <div class="u-name" id="userNameSidebar">Manager</div>
+        <div class="u-role">Admin</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main" id="main">
+
+  <header class="topbar">
+    <div class="topbar-l">
+      <button class="icon-btn mob-menu-btn" id="mobMenuBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <div>
+        <h1 class="pg-title" id="pageTitle">All Tasks</h1>
+        <p class="pg-sub" id="pageSubtitle">Track and manage all tasks</p>
+      </div>
+    </div>
+    <div class="topbar-r">
+      <div class="search-wrap">
+        <svg class="s-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" class="s-input" placeholder="Search tasks…" />
+      </div>
+      <select id="priorityFilter" class="filter-sel">
+        <option value="">All Priorities</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <button class="icon-btn" id="voiceBtn" title="Voice to task">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+      <button class="icon-btn" id="darkToggle" title="Toggle dark mode">
+        <svg id="sunIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg id="moonIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
+      <button class="btn-primary" id="addTaskBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="btn-label">New Task</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="stats-row">
+    <div class="stat-card">
+      <div class="s-num" id="stat-total">0</div>
+      <div class="s-lbl">Total</div>
+    </div>
+    <div class="stat-card c-blue">
+      <div class="s-num" id="stat-active">0</div>
+      <div class="s-lbl">Active</div>
+    </div>
+    <div class="stat-card c-red">
+      <div class="s-num" id="stat-overdue">0</div>
+      <div class="s-lbl">Overdue</div>
+    </div>
+    <div class="stat-card c-amber">
+      <div class="s-num" id="stat-soon">0</div>
+      <div class="s-lbl">Due Soon</div>
+    </div>
+    <div class="stat-card c-green">
+      <div class="s-num" id="stat-done">0</div>
+      <div class="s-lbl">Done</div>
+    </div>
+  </section>
+
+  <section class="task-section">
+    <div class="table-wrap">
+      <table class="task-table" id="taskTable">
+        <thead>
+          <tr>
+            <th class="tc-chk"></th>
+            <th class="tc-task sortable" data-sort="title">Task <span class="sa">↕</span></th>
+            <th class="tc-who sortable" data-sort="assignee">Assignee <span class="sa">↕</span></th>
+            <th class="tc-pri sortable" data-sort="priority">Priority <span class="sa">↕</span></th>
+            <th class="tc-date sortable hide-sm" data-sort="assignedDate">Assigned <span class="sa">↕</span></th>
+            <th class="tc-date sortable" data-sort="dueDate">Due <span class="sa">↕</span></th>
+            <th class="tc-status sortable hide-sm" data-sort="status">Status <span class="sa">↕</span></th>
+            <th class="tc-act"></th>
+          </tr>
+        </thead>
+        <tbody id="taskBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none">
+        <div class="e-ico">📋</div>
+        <div class="e-title">No tasks here</div>
+        <div class="e-sub">Add a task or adjust your filters</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- VOICE PANEL -->
+<div class="vp-overlay" id="vpOverlay"></div>
+<div class="voice-panel" id="voicePanel">
+  <div class="vp-hd">
+    <div class="vp-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>
+      Voice to Task
+    </div>
+    <button class="icon-btn" id="vpClose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="vp-body">
+    <p class="vp-hint">Say the task, who it's for, priority, and due date.</p>
+    <p class="vp-example"><em>"Design the homepage, assign to Sarah, high priority, due next Friday"</em></p>
+    <div class="vp-transcript" id="vpTranscript">Tap the mic to start…</div>
+    <div class="vp-parsed" id="vpParsed" style="display:none"></div>
+    <button class="vp-mic" id="vpMicBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28"><path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+    </button>
+    <div class="vp-status" id="vpStatus">Ready</div>
+    <div class="vp-acts" id="vpActions" style="display:none">
+      <button class="btn-ghost" id="vpRetry">Retry</button>
+      <button class="btn-primary" id="vpConfirm">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: TASK -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-hd">
+      <h2 class="modal-ttl" id="modalTitle">New Task</h2>
+      <button class="icon-btn" id="modalClose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">Task Title <span class="req">*</span></label>
+        <input type="text" class="fi" id="taskTitle" placeholder="What needs to be done?" />
+      </div>
+      <div class="fg">
+        <label class="fl">Description</label>
+        <textarea class="fi fi-ta" id="taskDesc" placeholder="Add details…" rows="2"></textarea>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label class="fl">Assignee <span class="req">*</span></label>
+          <select class="fi" id="taskAssignee"></select>
+        </div>
+        <div class="fg">
+          <label class="fl">Priority</label>
+          <select class="fi" id="taskPriority">
+            <option value="high">🔴 High</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label class="fl">Assigned Date</label>
+          <input type="date" class="fi" id="taskAssignedDate" />
+        </div>
+        <div class="fg">
+          <label class="fl">Due Date <span class="req">*</span></label>
+          <input type="date" class="fi" id="taskDueDate" />
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Tags</label>
+        <input type="text" class="fi" id="taskTags" placeholder="design, urgent (comma-separated)" />
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-ghost" id="modalCancel">Cancel</button>
+      <button class="btn-primary" id="modalSave">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EMPLOYEE -->
+<div class="modal-overlay" id="employeeModal">
+  <div class="modal modal-sm">
+    <div class="modal-hd">
+      <h2 class="modal-ttl">Add Employee</h2>
+      <button class="icon-btn" id="empModalClose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">Name <span class="req">*</span></label>
+        <input type="text" class="fi" id="empName" placeholder="Full name" />
+      </div>
+      <div class="fg">
+        <label class="fl">Role</label>
+        <input type="text" class="fi" id="empRole" placeholder="e.g. Designer" />
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-ghost" id="empModalCancel">Cancel</button>
+      <button class="btn-primary" id="empModalSave">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRAWER -->
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="taskDrawer">
+  <div class="drawer-hd">
+    <h2 class="drawer-ttl" id="drawerTaskTitle">Task Detail</h2>
+    <button class="icon-btn" id="drawerClose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script src="storage.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
