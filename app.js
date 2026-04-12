@@ -1,4 +1,5 @@
-// ── STATE ─────────────────────────────────────────────────
+const GEMINI_KEY = typeof __GEMINI_KEY__ !== 'undefined' ? __GEMINI_KEY__ : '';
+
 const App = {
   view: 'all',
   empFilter: null,
@@ -8,96 +9,93 @@ const App = {
   sortDir: 'asc',
   editId: null,
   voiceParsed: null,
+  _tasks: [],
+  _employees: [],
+  _settings: {},
 };
 
-// ── DOM ───────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 
 const el = {
-
-  main:          $('main'),
-
-  sidebar:       $('sidebar'),
-  mobOverlay:    $('mobOverlay'),
-  sidebarClose:  $('sidebarCloseBtn'),
-  mobMenuBtn:    $('mobMenuBtn'),
-  darkToggle:    $('darkToggle'),
-  sunIcon:       $('sunIcon'),
-  moonIcon:      $('moonIcon'),
-
-  pageTitle:     $('pageTitle'),
-  pageSub:       $('pageSubtitle'),
-  searchInput:   $('searchInput'),
-  priorityFilter:$('priorityFilter'),
-  addTaskBtn:    $('addTaskBtn'),
-  employeeNav:   $('employeeNav'),
-  addEmpBtn:     $('addEmployeeBtn'),
-
-  taskTable:     $('taskTable'),
-  taskBody:      $('taskBody'),
-  emptyState:    $('emptyState'),
-
-  taskModal:     $('taskModal'),
-  modalTitle:    $('modalTitle'),
-  modalClose:    $('modalClose'),
-  modalCancel:   $('modalCancel'),
-  modalSave:     $('modalSave'),
-  taskTitle:     $('taskTitle'),
-  taskDesc:      $('taskDesc'),
-  taskAssignee:  $('taskAssignee'),
-  taskPriority:  $('taskPriority'),
-  taskAssigned:  $('taskAssignedDate'),
-  taskDue:       $('taskDueDate'),
-  taskTags:      $('taskTags'),
-
-  empModal:      $('employeeModal'),
-  empModalClose: $('empModalClose'),
-  empModalCancel:$('empModalCancel'),
-  empModalSave:  $('empModalSave'),
-  empName:       $('empName'),
-  empRole:       $('empRole'),
-
-  drawerBg:      $('drawerBg'),
-  drawer:        $('taskDrawer'),
-  drawerClose:   $('drawerClose'),
-  drawerTitle:   $('drawerTaskTitle'),
-  drawerBody:    $('drawerBody'),
-
-  voiceBtn:      $('voiceBtn'),
-  vpOverlay:     $('vpOverlay'),
-  voicePanel:    $('voicePanel'),
-  vpClose:       $('vpClose'),
-  vpMic:         $('vpMicBtn'),
-  vpTranscript:  $('vpTranscript'),
-  vpParsed:      $('vpParsed'),
-  vpStatus:      $('vpStatus'),
-  vpActions:     $('vpActions'),
-  vpRetry:       $('vpRetry'),
-  vpConfirm:     $('vpConfirm'),
-
-  toast:         $('toast'),
+  main:           $('main'),
+  sidebar:        $('sidebar'),
+  mobOverlay:     $('mobOverlay'),
+  sidebarClose:   $('sidebarCloseBtn'),
+  mobMenuBtn:     $('mobMenuBtn'),
+  darkToggle:     $('darkToggle'),
+  sunIcon:        $('sunIcon'),
+  moonIcon:       $('moonIcon'),
+  pageTitle:      $('pageTitle'),
+  pageSub:        $('pageSubtitle'),
+  searchInput:    $('searchInput'),
+  priorityFilter: $('priorityFilter'),
+  addTaskBtn:     $('addTaskBtn'),
+  employeeNav:    $('employeeNav'),
+  addEmpBtn:      $('addEmployeeBtn'),
+  taskTable:      $('taskTable'),
+  taskBody:       $('taskBody'),
+  emptyState:     $('emptyState'),
+  taskModal:      $('taskModal'),
+  modalTitle:     $('modalTitle'),
+  modalClose:     $('modalClose'),
+  modalCancel:    $('modalCancel'),
+  modalSave:      $('modalSave'),
+  taskTitle:      $('taskTitle'),
+  taskDesc:       $('taskDesc'),
+  taskAssignee:   $('taskAssignee'),
+  taskPriority:   $('taskPriority'),
+  taskAssigned:   $('taskAssignedDate'),
+  taskDue:        $('taskDueDate'),
+  taskTags:       $('taskTags'),
+  empModal:       $('employeeModal'),
+  empModalClose:  $('empModalClose'),
+  empModalCancel: $('empModalCancel'),
+  empModalSave:   $('empModalSave'),
+  empName:        $('empName'),
+  empRole:        $('empRole'),
+  drawerBg:       $('drawerBg'),
+  drawer:         $('taskDrawer'),
+  drawerClose:    $('drawerClose'),
+  drawerTitle:    $('drawerTaskTitle'),
+  drawerBody:     $('drawerBody'),
+  voiceBtn:       $('voiceBtn'),
+  vpOverlay:      $('vpOverlay'),
+  voicePanel:     $('voicePanel'),
+  vpClose:        $('vpClose'),
+  vpMic:          $('vpMicBtn'),
+  vpTranscript:   $('vpTranscript'),
+  vpParsed:       $('vpParsed'),
+  vpStatus:       $('vpStatus'),
+  vpActions:      $('vpActions'),
+  vpRetry:        $('vpRetry'),
+  vpConfirm:      $('vpConfirm'),
+  toast:          $('toast'),
 };
 
 // ── INIT ──────────────────────────────────────────────────
-function init() {
+async function init() {
   el.taskAssigned.value = today();
   loadTheme();
   bindEvents();
+  await refreshCache();
   renderAll();
+}
+
+async function refreshCache() {
+  [App._tasks, App._employees, App._settings] = await Promise.all([
+    Storage.getAllTasks(),
+    Storage.getEmployees(),
+    Storage.getSettings(),
+  ]);
 }
 
 // ── EVENTS ────────────────────────────────────────────────
 function bindEvents() {
-  // Mobile sidebar
   el.mobMenuBtn.addEventListener('click', toggleSidebar);
   el.sidebarClose.addEventListener('click', toggleSidebar);
-  el.sidebarClose.addEventListener('click', () => closeMobSidebar());
-  el.mobOverlay.addEventListener('click', () => closeMobSidebar());
-
-  // Dark mode
+  el.mobOverlay.addEventListener('click', closeMobSidebar);
   el.darkToggle.addEventListener('click', toggleDark);
 
-  // Nav links (workspace)
   document.querySelectorAll('.nav-link[data-view]').forEach(a => {
     a.addEventListener('click', e => {
       e.preventDefault();
@@ -106,31 +104,25 @@ function bindEvents() {
     });
   });
 
-  // Add task / employee
   el.addTaskBtn.addEventListener('click', () => openTaskModal());
   el.addEmpBtn.addEventListener('click', () => openEmpModal());
 
-  // Task modal
   el.modalClose.addEventListener('click', closeTaskModal);
   el.modalCancel.addEventListener('click', closeTaskModal);
   el.modalSave.addEventListener('click', saveTask);
   el.taskModal.addEventListener('click', e => { if (e.target === el.taskModal) closeTaskModal(); });
 
-  // Employee modal
   el.empModalClose.addEventListener('click', closeEmpModal);
   el.empModalCancel.addEventListener('click', closeEmpModal);
   el.empModalSave.addEventListener('click', saveEmployee);
   el.empModal.addEventListener('click', e => { if (e.target === el.empModal) closeEmpModal(); });
 
-  // Drawer
   el.drawerClose.addEventListener('click', closeDrawer);
   el.drawerBg.addEventListener('click', closeDrawer);
 
-  // Search & filter
   el.searchInput.addEventListener('input', () => { App.search = el.searchInput.value.toLowerCase(); renderTasks(); });
   el.priorityFilter.addEventListener('change', () => { App.priority = el.priorityFilter.value; renderTasks(); });
 
-  // Sort
   document.querySelectorAll('.sortable').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.sort;
@@ -142,13 +134,11 @@ function bindEvents() {
     });
   });
 
-  // Keyboard
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeTaskModal(); closeEmpModal(); closeDrawer(); closeVoicePanel(); }
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openTaskModal(); }
   });
 
-  // Voice
   el.voiceBtn.addEventListener('click', toggleVoicePanel);
   el.vpClose.addEventListener('click', closeVoicePanel);
   el.vpOverlay.addEventListener('click', closeVoicePanel);
@@ -157,17 +147,11 @@ function bindEvents() {
   el.vpConfirm.addEventListener('click', confirmVoiceTask);
 }
 
-// ── DARK MODE ─────────────────────────────────────────────
-function loadTheme() {
-  const saved = localStorage.getItem('tf_theme') || 'light';
-  applyTheme(saved);
-}
-
+// ── THEME ─────────────────────────────────────────────────
+function loadTheme() { applyTheme(localStorage.getItem('tf_theme') || 'light'); }
 function toggleDark() {
-  const current = document.documentElement.getAttribute('data-theme');
-  applyTheme(current === 'dark' ? 'light' : 'dark');
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
-
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('tf_theme', theme);
@@ -175,19 +159,16 @@ function applyTheme(theme) {
   el.moonIcon.style.display = theme === 'dark' ? '' : 'none';
 }
 
-// ── MOBILE SIDEBAR ────────────────────────────────────────
+// ── SIDEBAR ───────────────────────────────────────────────
 function toggleSidebar() {
-  const isMobile = window.innerWidth <= 900;
-  if (isMobile) {
-    const open = el.sidebar.classList.contains('mob-open');
-    el.sidebar.classList.toggle('mob-open', !open);
-    el.mobOverlay.classList.toggle('show', !open);
+  if (window.innerWidth <= 900) {
+    el.sidebar.classList.toggle('mob-open');
+    el.mobOverlay.classList.toggle('show', el.sidebar.classList.contains('mob-open'));
   } else {
     el.sidebar.classList.toggle('collapsed');
     el.main.classList.toggle('sidebar-collapsed');
   }
 }
-
 function closeMobSidebar() {
   el.sidebar.classList.remove('mob-open');
   el.mobOverlay.classList.remove('show');
@@ -195,11 +176,11 @@ function closeMobSidebar() {
 
 // ── VIEW ──────────────────────────────────────────────────
 const viewMeta = {
-  all:       ['All Tasks',      'Track and manage all tasks'],
-  my:        ['My Tasks',       'Tasks assigned to you'],
-  team:      ['Team Tasks',     'Tasks assigned to your team'],
-  overdue:   ['Overdue',        'Tasks past their due date'],
-  completed: ['Completed',      'Tasks marked done'],
+  all:       ['All Tasks',  'Track and manage all tasks'],
+  my:        ['My Tasks',   'Tasks assigned to you'],
+  team:      ['Team Tasks', 'Tasks assigned to your team'],
+  overdue:   ['Overdue',    'Tasks past their due date'],
+  completed: ['Completed',  'Tasks marked done'],
 };
 
 function setView(view, empId = null) {
@@ -208,15 +189,13 @@ function setView(view, empId = null) {
 
   document.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
   if (!empId) {
-    const a = document.querySelector(`.nav-link[data-view="${view}"]`);
-    if (a) a.classList.add('active');
+    document.querySelector(`.nav-link[data-view="${view}"]`)?.classList.add('active');
   } else {
-    const a = document.querySelector(`.nav-link[data-emp="${empId}"]`);
-    if (a) a.classList.add('active');
+    document.querySelector(`.nav-link[data-emp="${empId}"]`)?.classList.add('active');
   }
 
   if (empId) {
-    const emp = Storage.getEmployees().find(e => e.id === empId);
+    const emp = App._employees.find(e => e.id === empId);
     el.pageTitle.textContent = emp ? `${emp.name}'s Tasks` : 'Employee Tasks';
     el.pageSub.textContent = emp?.role || 'Employee';
   } else {
@@ -239,10 +218,9 @@ function renderAll() {
 
 // ── EMPLOYEE NAV ──────────────────────────────────────────
 function renderEmpNav() {
-  const emps = Storage.getEmployees();
   el.employeeNav.innerHTML = '';
-  emps.forEach(emp => {
-    const open = Storage.getAllTasks().filter(t => t.assignee === emp.id && !t.completed).length;
+  App._employees.forEach(emp => {
+    const open = App._tasks.filter(t => t.assignee === emp.id && !t.completed).length;
     const li = document.createElement('li');
     li.innerHTML = `
       <a href="#" class="nav-link nav-link-emp" data-emp="${emp.id}">
@@ -257,12 +235,13 @@ function renderEmpNav() {
       setView('employee', emp.id);
       closeMobSidebar();
     });
-    li.querySelector('.emp-del').addEventListener('click', e => {
+    li.querySelector('.emp-del').addEventListener('click', async e => {
       e.stopPropagation();
       if (!confirm(`Remove ${emp.name}?`)) return;
-      Storage.getAllTasks().filter(t => t.assignee === emp.id).forEach(t => Storage.saveTask({ ...t, assignee: 'me' }));
-      Storage.deleteEmployee(emp.id);
+      await Promise.all(App._tasks.filter(t => t.assignee === emp.id).map(t => Storage.saveTask({ ...t, assignee: 'me' })));
+      await Storage.deleteEmployee(emp.id);
       if (App.empFilter === emp.id) setView('all');
+      await refreshCache();
       renderAll();
       toast(`${emp.name} removed`);
     });
@@ -272,9 +251,8 @@ function renderEmpNav() {
 
 // ── ASSIGNEE DROPDOWN ─────────────────────────────────────
 function renderAssigneeDropdown() {
-  const s = Storage.getSettings();
-  el.taskAssignee.innerHTML = `<option value="me">${esc(s.managerName || 'You')} (Manager)</option>`;
-  Storage.getEmployees().forEach(emp => {
+  el.taskAssignee.innerHTML = `<option value="me">${esc(App._settings.managerName || 'You')} (Manager)</option>`;
+  App._employees.forEach(emp => {
     const o = document.createElement('option');
     o.value = emp.id;
     o.textContent = emp.name + (emp.role ? ` — ${emp.role}` : '');
@@ -284,10 +262,10 @@ function renderAssigneeDropdown() {
 
 // ── TASK TABLE ────────────────────────────────────────────
 function renderTasks() {
-  let tasks = Storage.getAllTasks();
+  let tasks = [...App._tasks];
 
-  if (App.view === 'my')        tasks = tasks.filter(t => t.assignee === 'me');
-  else if (App.view === 'team') tasks = tasks.filter(t => t.assignee !== 'me');
+  if (App.view === 'my')             tasks = tasks.filter(t => t.assignee === 'me');
+  else if (App.view === 'team')      tasks = tasks.filter(t => t.assignee !== 'me');
   else if (App.view === 'overdue')   tasks = tasks.filter(t => !t.completed && isOverdue(t.dueDate));
   else if (App.view === 'completed') tasks = tasks.filter(t => t.completed);
   else if (App.view === 'employee' && App.empFilter) tasks = tasks.filter(t => t.assignee === App.empFilter);
@@ -301,8 +279,8 @@ function renderTasks() {
 
   const priOrder = { high: 0, medium: 1, low: 2 };
   tasks.sort((a, b) => {
-    let av = App.sortKey === 'priority' ? priOrder[a.priority] ?? 1 : (a[App.sortKey] || '');
-    let bv = App.sortKey === 'priority' ? priOrder[b.priority] ?? 1 : (b[App.sortKey] || '');
+    const av = App.sortKey === 'priority' ? (priOrder[a.priority] ?? 1) : (a[App.sortKey] || '');
+    const bv = App.sortKey === 'priority' ? (priOrder[b.priority] ?? 1) : (b[App.sortKey] || '');
     if (av < bv) return App.sortDir === 'asc' ? -1 : 1;
     if (av > bv) return App.sortDir === 'asc' ? 1 : -1;
     return 0;
@@ -311,7 +289,6 @@ function renderTasks() {
   if (!tasks.length) {
     el.taskTable.style.display = 'none';
     el.emptyState.style.display = 'flex';
-    renderStats(); renderBadges();
     return;
   }
 
@@ -320,10 +297,12 @@ function renderTasks() {
   el.taskBody.innerHTML = tasks.map(taskRow).join('');
 
   el.taskBody.querySelectorAll('.t-chk').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const t = Storage.toggleTaskComplete(cb.dataset.id);
+    cb.addEventListener('change', async () => {
+      const was = App._tasks.find(t => t.id === cb.dataset.id);
+      await Storage.toggleTaskComplete(cb.dataset.id);
+      await refreshCache();
       renderAll();
-      toast(t.completed ? '✓ Completed' : 'Reopened');
+      toast(was?.completed ? 'Reopened' : '✓ Completed');
     });
   });
 
@@ -339,21 +318,20 @@ function renderTasks() {
   });
 
   el.taskBody.querySelectorAll('.ra-del').forEach(btn => {
-    btn.addEventListener('click', e => {
+    btn.addEventListener('click', async e => {
       e.stopPropagation();
       if (!confirm('Delete this task?')) return;
-      Storage.deleteTask(btn.dataset.id);
+      await Storage.deleteTask(btn.dataset.id);
+      await refreshCache();
       renderAll();
       toast('Task deleted');
     });
   });
-
-  renderStats(); renderBadges();
 }
 
 function taskRow(t) {
-  const si   = statusInfo(t);
-  const who  = assigneeName(t.assignee);
+  const si  = statusInfo(t);
+  const who = getAssigneeName(t.assignee);
   const tags = (t.tags || []).map(g => `<span class="tag">${esc(g)}</span>`).join('');
   return `
     <tr class="t-row ${si.rowCls}" data-id="${t.id}">
@@ -380,7 +358,7 @@ function taskRow(t) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/></svg>
           </button>
           <button class="ra-btn ra-del" data-id="${t.id}" title="Delete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5  6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>
       </td>
@@ -389,7 +367,7 @@ function taskRow(t) {
 
 // ── STATS & BADGES ────────────────────────────────────────
 function renderStats() {
-  const all = Storage.getAllTasks();
+  const all = App._tasks;
   animateCounter($('stat-total'),   all.length);
   animateCounter($('stat-active'),  all.filter(t => !t.completed).length);
   animateCounter($('stat-overdue'), all.filter(t => !t.completed && isOverdue(t.dueDate)).length);
@@ -398,7 +376,7 @@ function renderStats() {
 }
 
 function renderBadges() {
-  const all = Storage.getAllTasks();
+  const all = App._tasks;
   $('badge-all').textContent       = all.filter(t => !t.completed).length;
   $('badge-my').textContent        = all.filter(t => t.assignee === 'me' && !t.completed).length;
   $('badge-team').textContent      = all.filter(t => t.assignee !== 'me' && !t.completed).length;
@@ -412,7 +390,7 @@ function openTaskModal(id = null) {
   renderAssigneeDropdown();
 
   if (id) {
-    const t = Storage.getTaskById(id);
+    const t = App._tasks.find(t => t.id === id);
     if (!t) return;
     el.modalTitle.textContent = 'Edit Task';
     el.taskTitle.value    = t.title;
@@ -439,7 +417,7 @@ function openTaskModal(id = null) {
 
 function closeTaskModal() { el.taskModal.classList.remove('open'); App.editId = null; }
 
-function saveTask() {
+async function saveTask() {
   const title = el.taskTitle.value.trim();
   if (!title) { shake(el.taskTitle); return; }
   const due = el.taskDue.value;
@@ -453,10 +431,14 @@ function saveTask() {
     assignee: el.taskAssignee.value, priority: el.taskPriority.value,
     assignedDate: el.taskAssigned.value, dueDate: due, tags,
   };
-  if (App.editId) { data.id = App.editId; Storage.saveTask(data); toast('Task updated ✓'); }
-  else { Storage.saveTask(data); toast('Task added ✓'); }
 
   closeTaskModal();
+  toast('Saving…');
+
+  if (App.editId) { data.id = App.editId; await Storage.saveTask(data); toast('Task updated ✓'); }
+  else { await Storage.saveTask(data); toast('Task added ✓'); }
+
+  await refreshCache();
   renderAll();
 }
 
@@ -468,33 +450,29 @@ function openEmpModal() {
 }
 function closeEmpModal() { el.empModal.classList.remove('open'); }
 
-function saveEmployee() {
+async function saveEmployee() {
   const name = el.empName.value.trim();
   if (!name) { shake(el.empName); return; }
-  Storage.saveEmployee({ name, role: el.empRole.value.trim() });
   closeEmpModal();
+  toast('Saving…');
+  await Storage.saveEmployee({ name, role: el.empRole.value.trim() });
+  await refreshCache();
   renderAll();
   toast(`${name} added ✓`);
 }
 
 // ── DRAWER ────────────────────────────────────────────────
 function openDrawer(id) {
-  const t = Storage.getTaskById(id);
+  const t = App._tasks.find(t => t.id === id);
   if (!t) return;
   const si  = statusInfo(t);
-  const who = assigneeName(t.assignee);
+  const who = getAssigneeName(t.assignee);
 
   el.drawerTitle.textContent = t.title;
   el.drawerBody.innerHTML = `
     <div class="d-row">
-      <div class="d-field">
-        <div class="d-label">Status</div>
-        <span class="badge ${si.badgeCls}">${si.label}</span>
-      </div>
-      <div class="d-field">
-        <div class="d-label">Priority</div>
-        <span class="badge bp-${t.priority}">${capFirst(t.priority)}</span>
-      </div>
+      <div class="d-field"><div class="d-label">Status</div><span class="badge ${si.badgeCls}">${si.label}</span></div>
+      <div class="d-field"><div class="d-label">Priority</div><span class="badge bp-${t.priority}">${capFirst(t.priority)}</span></div>
     </div>
     <div class="d-field">
       <div class="d-label">Assignee</div>
@@ -527,34 +505,33 @@ function closeDrawer() {
   el.drawerBg.classList.remove('show');
 }
 
-window.toggleDrawer = id => {
-  const t = Storage.toggleTaskComplete(id);
-  closeDrawer(); renderAll();
-  toast(t.completed ? '✓ Completed' : 'Reopened');
+window.toggleDrawer = async id => {
+  const was = App._tasks.find(t => t.id === id);
+  await Storage.toggleTaskComplete(id);
+  closeDrawer();
+  await refreshCache();
+  renderAll();
+  toast(was?.completed ? 'Reopened' : '✓ Completed');
 };
 
-// ── VOICE PANEL ───────────────────────────────────────────
+// ── VOICE ─────────────────────────────────────────────────
 let recognition = null;
 
 function toggleVoicePanel() {
-  const open = el.voicePanel.classList.contains('show');
-  if (open) { closeVoicePanel(); } else { openVoicePanel(); }
+  el.voicePanel.classList.contains('show') ? closeVoicePanel() : openVoicePanel();
 }
-
 function openVoicePanel() {
   el.voicePanel.classList.add('show');
   el.vpOverlay.classList.add('show');
   el.voiceBtn.classList.add('active');
 }
-
 function closeVoicePanel() {
-  if (recognition) { try { recognition.stop(); } catch(e){} }
+  try { recognition?.stop(); } catch(e) {}
   el.voicePanel.classList.remove('show');
   el.vpOverlay.classList.remove('show');
   el.voiceBtn.classList.remove('active');
   resetVoice();
 }
-
 function resetVoice() {
   el.vpTranscript.textContent = 'Tap the mic to start…';
   el.vpParsed.style.display = 'none';
@@ -566,20 +543,12 @@ function resetVoice() {
 
 function startVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    el.vpTranscript.textContent = 'Speech recognition is not supported in this browser. Try Chrome or Edge.';
-    return;
-  }
-
-  if (el.vpMic.classList.contains('recording')) {
-    recognition.stop();
-    return;
-  }
+  if (!SR) { el.vpTranscript.textContent = 'Not supported — try Chrome or Edge.'; return; }
+  if (el.vpMic.classList.contains('recording')) { recognition.stop(); return; }
 
   recognition = new SR();
   recognition.lang = 'en-US';
   recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
 
   el.vpMic.classList.add('recording');
   el.vpStatus.textContent = 'Listening…';
@@ -591,189 +560,128 @@ function startVoice() {
   recognition.onresult = e => {
     const transcript = Array.from(e.results).map(r => r[0].transcript).join(' ');
     el.vpTranscript.textContent = transcript;
-
     if (e.results[e.results.length - 1].isFinal) {
       el.vpMic.classList.remove('recording');
       el.vpStatus.textContent = 'Processing…';
       parseVoiceInput(transcript);
     }
   };
-
-  recognition.onerror = e => {
-    el.vpMic.classList.remove('recording');
-    el.vpStatus.textContent = `Error: ${e.error}`;
-  };
-
-  recognition.onend = () => {
-    el.vpMic.classList.remove('recording');
-    if (el.vpStatus.textContent === 'Listening…') el.vpStatus.textContent = 'Ready';
-  };
-
+  recognition.onerror = e => { el.vpMic.classList.remove('recording'); el.vpStatus.textContent = `Error: ${e.error}`; };
+  recognition.onend   = () => { el.vpMic.classList.remove('recording'); if (el.vpStatus.textContent === 'Listening…') el.vpStatus.textContent = 'Ready'; };
   recognition.start();
 }
 
-function parseVoiceInput(text) {
-  const t = text.toLowerCase();
-  const employees = Storage.getEmployees();
+async function parseVoiceInput(text) {
+  const empList = App._employees.map(e => `${e.id}:${e.name}`).join(', ') || 'none';
 
-  // Priority
-  let priority = 'medium';
-  if (/\bhigh\b|\burgent\b|\bcritical\b/.test(t)) priority = 'high';
-  else if (/\blow\b|\bwhenever\b|\bno rush\b/.test(t)) priority = 'low';
-
-  // Due date
-  let dueDate = '';
-  const now = new Date();
-
-  const nextDayMatch = t.match(/next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
-  const thisWeekMatch = t.match(/this\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
-  const inDaysMatch = t.match(/in\s+(\d+)\s+days?/);
-  const tomorrowMatch = /\btomorrow\b/.test(t);
-  const todayMatch = /\btoday\b/.test(t);
-  const endOfWeekMatch = /\bend\s+of\s+(the\s+)?week\b/.test(t);
-  const nextWeekMatch = /\bnext\s+week\b/.test(t);
-  const dateMatch = t.match(/(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/);
-  const monthDayMatch = t.match(/(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})/);
-
-  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-
-  if (todayMatch) {
-    dueDate = today();
-  } else if (tomorrowMatch) {
-    const d = new Date(now); d.setDate(d.getDate() + 1);
-    dueDate = toDateStr(d);
-  } else if (nextDayMatch) {
-    const target = dayNames.indexOf(nextDayMatch[1]);
-    const d = new Date(now);
-    let diff = target - d.getDay();
-    if (diff <= 0) diff += 7;
-    d.setDate(d.getDate() + diff);
-    dueDate = toDateStr(d);
-  } else if (thisWeekMatch) {
-    const target = dayNames.indexOf(thisWeekMatch[1]);
-    const d = new Date(now);
-    let diff = target - d.getDay();
-    if (diff < 0) diff += 7;
-    d.setDate(d.getDate() + diff);
-    dueDate = toDateStr(d);
-  } else if (endOfWeekMatch) {
-    const d = new Date(now);
-    const daysToFri = (5 - d.getDay() + 7) % 7 || 7;
-    d.setDate(d.getDate() + daysToFri);
-    dueDate = toDateStr(d);
-  } else if (nextWeekMatch) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + 7);
-    dueDate = toDateStr(d);
-  } else if (inDaysMatch) {
-    const d = new Date(now);
-    d.setDate(d.getDate() + parseInt(inDaysMatch[1]));
-    dueDate = toDateStr(d);
-  } else if (monthDayMatch) {
-    const months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
-    const mo = months.indexOf(monthDayMatch[1]);
-    const dy = parseInt(monthDayMatch[2]);
-    const d = new Date(now.getFullYear(), mo, dy);
-    if (d < now) d.setFullYear(d.getFullYear() + 1);
-    dueDate = toDateStr(d);
-  } else if (dateMatch) {
-    const mo = parseInt(dateMatch[1]) - 1;
-    const dy = parseInt(dateMatch[2]);
-    const yr = dateMatch[3] ? parseInt(dateMatch[3]) : now.getFullYear();
-    const fullYr = yr < 100 ? 2000 + yr : yr;
-    dueDate = toDateStr(new Date(fullYr, mo, dy));
+  if (GEMINI_KEY) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text:
+          `Extract task details from this voice input. Return ONLY valid JSON, no markdown, no backticks.
+Voice: "${text}"
+Today: ${today()}
+Employees (id:name): ${empList}
+Return: {"title":"...","assigneeId":"me or exact employee id","priority":"high|medium|low","dueDate":"YYYY-MM-DD or empty string"}
+- title: the task only, clean
+- assigneeId: fuzzy-match name to list by id. If no match use "me"
+- priority: high=urgent/critical/asap, low=whenever/no rush, else medium
+- dueDate: resolve relative dates to YYYY-MM-DD, empty string if none`
+        }] }] })
+      });
+      const data = await res.json();
+      const parsed = JSON.parse(data.candidates[0].content.parts[0].text.trim());
+      App.voiceParsed = parsed;
+      showVoicePreview();
+      return;
+    } catch(e) { /* fall through to regex */ }
   }
 
-  // Assignee — match employee names
-  let assignee = 'me';
-  let assigneeName = Storage.getSettings().managerName || 'You';
-  for (const emp of employees) {
-    const first = emp.name.split(' ')[0].toLowerCase();
-    const full  = emp.name.toLowerCase();
-    if (t.includes(`assign to ${full}`) || t.includes(`for ${full}`) ||
-        t.includes(`assign to ${first}`) || t.includes(`for ${first}`) ||
-        t.includes(`give to ${first}`) || t.includes(`give to ${full}`)) {
-      assignee = emp.id;
-      assigneeName = emp.name;
-      break;
+  // Regex fallback
+  const t = text.toLowerCase();
+  let priority = 'medium';
+  if (/\bhigh\b|\burgent\b|\bcritical\b|\basap\b/.test(t)) priority = 'high';
+  else if (/\blow\b|\bwhenever\b|\bno rush\b/.test(t)) priority = 'low';
+
+  let assigneeId = 'me';
+  for (const emp of App._employees) {
+    if (t.includes(emp.name.toLowerCase()) || t.includes(emp.name.split(' ')[0].toLowerCase())) {
+      assigneeId = emp.id; break;
     }
   }
 
-  // Clean title — strip known keyword phrases
+  const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  let dueDate = '';
+  const now = new Date();
+  const ndm = t.match(/next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/);
+  const idm = t.match(/in\s+(\d+)\s+days?/);
+  if      (/\btoday\b/.test(t))    dueDate = today();
+  else if (/\btomorrow\b/.test(t)) { const d = new Date(now); d.setDate(d.getDate()+1); dueDate = toDateStr(d); }
+  else if (ndm) { const d = new Date(now); let df = days.indexOf(ndm[1]) - d.getDay(); if(df<=0)df+=7; d.setDate(d.getDate()+df); dueDate = toDateStr(d); }
+  else if (idm) { const d = new Date(now); d.setDate(d.getDate()+parseInt(idm[1])); dueDate = toDateStr(d); }
+  else if (/end\s+of\s+(the\s+)?week/.test(t)) { const d = new Date(now); const df=(5-d.getDay()+7)%7||7; d.setDate(d.getDate()+df); dueDate = toDateStr(d); }
+  else if (/next\s+week/.test(t))  { const d = new Date(now); d.setDate(d.getDate()+7); dueDate = toDateStr(d); }
+
   let title = text;
-  const stripPatterns = [
-    /,?\s*assign(ed)?\s+to\s+\w[\w\s]*/gi,
-    /,?\s*for\s+(high|medium|low|urgent)\s+priority/gi,
-    /,?\s*(high|medium|low|urgent|critical)\s+priority/gi,
-    /,?\s*priority\s+(high|medium|low)/gi,
-    /,?\s*due\s+(next|this|on|by)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|today|tomorrow|january|february|march|april|may|june|july|august|september|october|november|december|\d)/gi,
-    /,?\s*in\s+\d+\s+days?/gi,
-    /,?\s*by\s+(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/gi,
-    /,?\s*end\s+of\s+(the\s+)?week/gi,
-    /,?\s*next\s+week/gi,
-  ];
-  stripPatterns.forEach(p => { title = title.replace(p, ''); });
-  // Also strip employee names from title
-  for (const emp of employees) {
-    title = title.replace(new RegExp(`,?\\s*for\\s+${emp.name}`, 'gi'), '');
-    title = title.replace(new RegExp(`,?\\s*give\\s+to\\s+${emp.name}`, 'gi'), '');
+  [/,?\s*assign(ed)?\s+to\s+[\w\s]+/gi, /,?\s*(high|medium|low|urgent|critical|asap)\s+priority/gi,
+   /,?\s*priority\s+(high|medium|low)/gi, /,?\s*due\s+(next|this|on|by)?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|today|tomorrow|\d)/gi,
+   /,?\s*in\s+\d+\s+days?/gi, /,?\s*(next|end\s+of\s+(the\s+)?)\s*week/gi,
+  ].forEach(p => { title = title.replace(p, ''); });
+  for (const emp of App._employees) {
+    title = title.replace(new RegExp(`,?\\s*(for|assign to|give to)\\s+${emp.name}`, 'gi'), '');
   }
-  title = title.replace(/\s{2,}/g, ' ').trim();
-  title = title.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+  title = title.replace(/\s{2,}/g,' ').replace(/^[,\s]+|[,\s]+$/g,'').trim();
   if (title) title = title[0].toUpperCase() + title.slice(1);
 
-  App.voiceParsed = { title, priority, dueDate, assignee };
-
-  // Show parsed preview
-  el.vpParsed.innerHTML = `
-    <strong>Task:</strong> ${esc(title || '(could not detect title)')}<br>
-    <strong>Assignee:</strong> ${esc(assigneeName)}<br>
-    <strong>Priority:</strong> ${capFirst(priority)}<br>
-    <strong>Due:</strong> ${dueDate ? fmtDate(dueDate) : '(not detected — you can set it manually)'}
-  `;
-  el.vpParsed.style.display = 'block';
-  el.vpStatus.textContent = 'Review and confirm';
-  el.vpActions.style.display = 'flex';
+  App.voiceParsed = { title, assigneeId, priority, dueDate };
+  showVoicePreview();
 }
 
-function confirmVoiceTask() {
+function showVoicePreview() {
   const p = App.voiceParsed;
-  if (!p) return;
+  const whoName = p.assigneeId === 'me'
+    ? (App._settings.managerName || 'You')
+    : (App._employees.find(e => e.id === p.assigneeId)?.name || 'You');
+  el.vpParsed.innerHTML = `
+    <strong>Task:</strong> ${esc(p.title || '—')}<br>
+    <strong>Assignee:</strong> ${esc(whoName)}<br>
+    <strong>Priority:</strong> ${capFirst(p.priority)}<br>
+    <strong>Due:</strong> ${p.dueDate ? fmtDate(p.dueDate) : 'Not detected'}`;
+  el.vpParsed.style.display = 'block';
+  el.vpActions.style.display = 'flex';
+  el.vpStatus.textContent = 'Review and confirm';
+}
 
-  if (!p.title) {
-    toast('Could not detect a task title. Please try again.');
-    return;
-  }
-
-  // Open the task modal pre-filled so the user can review/edit before final save
-  renderAssigneeDropdown();
-  el.modalTitle.textContent = 'New Task (from voice)';
-  el.taskTitle.value    = p.title;
-  el.taskDesc.value     = '';
-  el.taskAssignee.value = p.assignee;
-  el.taskPriority.value = p.priority;
-  el.taskAssigned.value = today();
-  el.taskDue.value      = p.dueDate || '';
-  el.taskTags.value     = '';
-  App.editId = null;
-
+async function confirmVoiceTask() {
+  const p = App.voiceParsed;
+  if (!p?.title) { toast('No title detected — try again'); return; }
   closeVoicePanel();
-  el.taskModal.classList.add('open');
-  setTimeout(() => el.taskTitle.focus(), 80);
+  toast('Saving…');
+  await Storage.saveTask({
+    title: p.title, description: '',
+    assignee: p.assigneeId || 'me',
+    priority: p.priority || 'medium',
+    assignedDate: today(), dueDate: p.dueDate || '', tags: [],
+  });
+  await refreshCache();
+  renderAll();
+  toast('Task added ✓');
 }
 
 // ── HELPERS ───────────────────────────────────────────────
 function statusInfo(t) {
-  if (t.completed) return { label: 'Done',      badgeCls: 'b-done', dtCls: '',         rowCls: 'row-done' };
-  if (!t.dueDate)  return { label: 'No Date',   badgeCls: 'b-none', dtCls: '',         rowCls: '' };
-  if (isOverdue(t.dueDate))  return { label: 'Overdue',   badgeCls: 'b-over', dtCls: 'dt-over', rowCls: 'row-overdue' };
-  if (isDueSoon(t.dueDate))  return { label: 'Due Soon',  badgeCls: 'b-soon', dtCls: 'dt-soon', rowCls: 'row-soon' };
-  return { label: 'On Track', badgeCls: 'b-ok',   dtCls: '',         rowCls: '' };
+  if (t.completed)          return { label: 'Done',     badgeCls: 'b-done', dtCls: '',        rowCls: 'row-done' };
+  if (!t.dueDate)           return { label: 'No Date',  badgeCls: 'b-none', dtCls: '',        rowCls: '' };
+  if (isOverdue(t.dueDate)) return { label: 'Overdue',  badgeCls: 'b-over', dtCls: 'dt-over', rowCls: 'row-overdue' };
+  if (isDueSoon(t.dueDate)) return { label: 'Due Soon', badgeCls: 'b-soon', dtCls: 'dt-soon', rowCls: 'row-soon' };
+  return                           { label: 'On Track', badgeCls: 'b-ok',   dtCls: '',        rowCls: '' };
 }
 
-function assigneeName(id) {
-  if (id === 'me') return Storage.getSettings().managerName || 'You';
-  return Storage.getEmployees().find(e => e.id === id)?.name || 'Unknown';
+function getAssigneeName(id) {
+  if (id === 'me') return App._settings.managerName || 'You';
+  return App._employees.find(e => e.id === id)?.name || 'Unknown';
 }
 
 function isOverdue(d) { return d && new Date(d) < new Date(today()); }
@@ -783,38 +691,19 @@ function isDueSoon(d) {
   return diff >= 0 && diff <= 3;
 }
 
-function today() { return new Date().toISOString().split('T')[0]; }
-function toDateStr(d) { return d.toISOString().split('T')[0]; }
-
-function fmtDate(s) {
-  if (!s) return '—';
-  const d = new Date(s + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-function fmtDatetime(s) {
-  if (!s) return '—';
-  return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function esc(s) {
-  if (!s) return '';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function capFirst(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
-
+function today()         { return new Date().toISOString().split('T')[0]; }
+function toDateStr(d)    { return d.toISOString().split('T')[0]; }
+function fmtDate(s)      { if (!s) return '—'; return new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function fmtDatetime(s)  { if (!s) return '—'; return new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function esc(s)          { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function capFirst(s)     { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
 function strColor(s) {
   if (!s) return '#888';
   let h = 0;
   for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h);
   return ['#f59e0b','#10b981','#3b82f6','#ec4899','#8b5cf6','#ef4444','#06b6d4','#84cc16'][Math.abs(h) % 8];
 }
-
-function shake(input) {
-  input.classList.add('err');
-  input.focus();
-  setTimeout(() => input.classList.remove('err'), 700);
-}
+function shake(input) { input.classList.add('err'); input.focus(); setTimeout(() => input.classList.remove('err'), 700); }
 
 let toastTimer;
 function toast(msg) {
@@ -827,16 +716,13 @@ function toast(msg) {
 function animateCounter(el, target) {
   const start = parseInt(el.textContent) || 0;
   if (start === target) return;
-  const duration = 500;
-  const startTime = performance.now();
+  const t0 = performance.now();
   const tick = now => {
-    const progress = Math.min((now - startTime) / duration, 1);
-    const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-    el.textContent = Math.round(start + (target - start) * ease);
-    if (progress < 1) requestAnimationFrame(tick);
+    const p = Math.min((now - t0) / 500, 1);
+    el.textContent = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
 }
 
-// ── BOOT ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', init);
