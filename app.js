@@ -14,6 +14,9 @@ const App = {
 const $ = id => document.getElementById(id);
 
 const el = {
+
+  main:          $('main'),
+
   sidebar:       $('sidebar'),
   mobOverlay:    $('mobOverlay'),
   sidebarClose:  $('sidebarCloseBtn'),
@@ -86,7 +89,8 @@ function init() {
 // ── EVENTS ────────────────────────────────────────────────
 function bindEvents() {
   // Mobile sidebar
-  el.mobMenuBtn.addEventListener('click', () => openMobSidebar());
+  el.mobMenuBtn.addEventListener('click', toggleSidebar);
+  el.sidebarClose.addEventListener('click', toggleSidebar);
   el.sidebarClose.addEventListener('click', () => closeMobSidebar());
   el.mobOverlay.addEventListener('click', () => closeMobSidebar());
 
@@ -98,7 +102,7 @@ function bindEvents() {
     a.addEventListener('click', e => {
       e.preventDefault();
       setView(a.dataset.view);
-      closeMobSidebar();
+      if (window.innerWidth <= 900) closeMobSidebar();
     });
   });
 
@@ -172,10 +176,18 @@ function applyTheme(theme) {
 }
 
 // ── MOBILE SIDEBAR ────────────────────────────────────────
-function openMobSidebar() {
-  el.sidebar.classList.add('mob-open');
-  el.mobOverlay.classList.add('show');
+function toggleSidebar() {
+  const isMobile = window.innerWidth <= 900;
+  if (isMobile) {
+    const open = el.sidebar.classList.contains('mob-open');
+    el.sidebar.classList.toggle('mob-open', !open);
+    el.mobOverlay.classList.toggle('show', !open);
+  } else {
+    el.sidebar.classList.toggle('collapsed');
+    el.main.classList.toggle('sidebar-collapsed');
+  }
 }
+
 function closeMobSidebar() {
   el.sidebar.classList.remove('mob-open');
   el.mobOverlay.classList.remove('show');
