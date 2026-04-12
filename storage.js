@@ -1,184 +1,137 @@
-/**
- * storage.js — Data layer for TaskFlow
- * Uses localStorage as the persistent backend (works on GitHub Pages / static hosting).
- * All data is keyed under "taskflow_*" namespaces.
- */
+const SUPABASE_URL = 'https://xxxx.supabase.co';
+const SUPABASE_KEY = 'your_anon_key_here';
+
+const db = (table) => ({
+  url: `${SUPABASE_URL}/rest/v1/${table}`,
+  headers: {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'resolution=merge-duplicates',
+  }
+});
 
 const Storage = (() => {
 
-  const KEYS = {
-    TASKS: 'taskflow_tasks',
-    EMPLOYEES: 'taskflow_employees',
-    SETTINGS: 'taskflow_settings',
-  };
+  // local cache so UI stays fast
+  let _cache = { tasks: null, employees: null, settings: null };
 
-  // ── Utilities ────────────────────────────────────────────────────
-
-  function _get(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      console.error('[Storage] Read error', key, e);
-      return null;
+  async function _get(table) {
+    if (_cache[table]) return _cache[table];
+    const r = await fetch(`${db(table).url}?select=*`, { headers: db(table).headers });
+    const rows = await r.json();
+    if (table === 'settings') {
+      _cache[table] = rows[0]?.data || { managerName: 'You' };
+    } else {
+      _cache[table] = rows.map(r => r.data);
     }
+    return _cache[table];
   }
 
-  function _set(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      console.error('[Storage] Write error', key, e);
-      return false;
-    }
+  async function _upsert(table, id, data) {
+    _cache[table] = null; // bust cache
+    await fetch(db(table).url, {
+      method: 'POST',
+      headers: { ...db(table).headers, 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ id, data }),
+    });
   }
 
-  function _generateId() {
+  async function _delete(table, id) {
+    _cache[table] = null;
+    await fetch(`${db(table).url}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: db(table).headers,
+    });
+  }
+
+  function _id() {
     return 'tf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
   }
 
-  // ── TASKS ────────────────────────────────────────────────────────
-
-  function getAllTasks() {
-    return _get(KEYS.TASKS) || [];
+  // ── TASKS ──────────────────────────────────────────────
+  async function getAllTasks() {
+    return await _get('tasks');
   }
 
-  function getTaskById(id) {
-    return getAllTasks().find(t => t.id === id) || null;
+  async function getTaskById(id) {
+    const tasks = await getAllTasks();
+    return tasks.find(t => t.id === id) || null;
   }
 
-  function saveTask(taskData) {
-    const tasks = getAllTasks();
+  async function saveTask(taskData) {
     const now = new Date().toISOString();
-
     if (taskData.id) {
-      // Update existing
-      const idx = tasks.findIndex(t => t.id === taskData.id);
-      if (idx === -1) return null;
-      tasks[idx] = { ...tasks[idx], ...taskData, updatedAt: now };
-      _set(KEYS.TASKS, tasks);
-      return tasks[idx];
+      const tasks = await getAllTasks();
+      const existing = tasks.find(t => t.id === taskData.id);
+      const updated = { ...existing, ...taskData, updatedAt: now };
+      await _upsert('tasks', updated.id, updated);
+      return updated;
     } else {
-      // Create new
       const newTask = {
-        id: _generateId(),
-        title: '',
-        description: '',
-        assignee: 'me',
-        priority: 'medium',
-        assignedDate: new Date().toISOString().split('T')[0],
-        dueDate: '',
-        tags: [],
-        completed: false,
-        completedAt: null,
-        createdAt: now,
-        updatedAt: now,
-        ...taskData,
+        id: _id(), title: '', description: '', assignee: 'me',
+        priority: 'medium', assignedDate: now.split('T')[0],
+        dueDate: '', tags: [], completed: false, completedAt: null,
+        createdAt: now, updatedAt: now, ...taskData,
       };
-      tasks.unshift(newTask);
-      _set(KEYS.TASKS, tasks);
+      await _upsert('tasks', newTask.id, newTask);
       return newTask;
     }
   }
 
-  function deleteTask(id) {
-    const tasks = getAllTasks().filter(t => t.id !== id);
-    return _set(KEYS.TASKS, tasks);
+  async function deleteTask(id) {
+    await _delete('tasks', id);
   }
 
-  function toggleTaskComplete(id) {
-    const tasks = getAllTasks();
-    const idx = tasks.findIndex(t => t.id === id);
-    if (idx === -1) return null;
-    tasks[idx].completed = !tasks[idx].completed;
-    tasks[idx].completedAt = tasks[idx].completed ? new Date().toISOString() : null;
-    tasks[idx].updatedAt = new Date().toISOString();
-    _set(KEYS.TASKS, tasks);
-    return tasks[idx];
+  async function toggleTaskComplete(id) {
+    const tasks = await getAllTasks();
+    const task = tasks.find(t => t.id === id);
+    if (!task) return null;
+    task.completed = !task.completed;
+    task.completedAt = task.completed ? new Date().toISOString() : null;
+    task.updatedAt = new Date().toISOString();
+    await _upsert('tasks', id, task);
+    return task;
   }
 
-  // ── EMPLOYEES ────────────────────────────────────────────────────
-
-  function getEmployees() {
-    return _get(KEYS.EMPLOYEES) || [];
+  // ── EMPLOYEES ──────────────────────────────────────────
+  async function getEmployees() {
+    return await _get('employees');
   }
 
-  function saveEmployee(data) {
-    const employees = getEmployees();
+  async function saveEmployee(data) {
+    const emps = await getEmployees();
     if (data.id) {
-      const idx = employees.findIndex(e => e.id === data.id);
-      if (idx === -1) return null;
-      employees[idx] = { ...employees[idx], ...data };
-      _set(KEYS.EMPLOYEES, employees);
-      return employees[idx];
+      const existing = emps.find(e => e.id === data.id);
+      const updated = { ...existing, ...data };
+      await _upsert('employees', updated.id, updated);
+      return updated;
     } else {
-      const newEmp = {
-        id: _generateId(),
-        name: data.name || 'Unknown',
-        role: data.role || '',
-        createdAt: new Date().toISOString(),
-      };
-      employees.push(newEmp);
-      _set(KEYS.EMPLOYEES, employees);
+      const newEmp = { id: _id(), name: data.name || 'Unknown', role: data.role || '', createdAt: new Date().toISOString() };
+      await _upsert('employees', newEmp.id, newEmp);
       return newEmp;
     }
   }
 
-  function deleteEmployee(id) {
-    const employees = getEmployees().filter(e => e.id !== id);
-    return _set(KEYS.EMPLOYEES, employees);
+  async function deleteEmployee(id) {
+    await _delete('employees', id);
   }
 
-  // ── SETTINGS ─────────────────────────────────────────────────────
-
-  function getSettings() {
-    return _get(KEYS.SETTINGS) || { managerName: 'You' };
+  // ── SETTINGS ───────────────────────────────────────────
+  async function getSettings() {
+    return await _get('settings');
   }
 
-  function saveSettings(settings) {
-    return _set(KEYS.SETTINGS, { ...getSettings(), ...settings });
+  async function saveSettings(settings) {
+    const current = await getSettings();
+    const updated = { ...current, ...settings };
+    _cache.settings = updated;
+    await _upsert('settings', 'singleton', updated);
   }
-
-  // ── EXPORT / IMPORT ──────────────────────────────────────────────
-
-  function exportData() {
-    return JSON.stringify({
-      tasks: getAllTasks(),
-      employees: getEmployees(),
-      settings: getSettings(),
-      exportedAt: new Date().toISOString(),
-    }, null, 2);
-  }
-
-  function importData(jsonString) {
-    try {
-      const data = JSON.parse(jsonString);
-      if (data.tasks) _set(KEYS.TASKS, data.tasks);
-      if (data.employees) _set(KEYS.EMPLOYEES, data.employees);
-      if (data.settings) _set(KEYS.SETTINGS, data.settings);
-      return true;
-    } catch (e) {
-      console.error('[Storage] Import error', e);
-      return false;
-    }
-  }
-
-  // ── Public API ───────────────────────────────────────────────────
 
   return {
-    getAllTasks,
-    getTaskById,
-    saveTask,
-    deleteTask,
-    toggleTaskComplete,
-    getEmployees,
-    saveEmployee,
-    deleteEmployee,
-    getSettings,
-    saveSettings,
-    exportData,
-    importData,
+    getAllTasks, getTaskById, saveTask, deleteTask, toggleTaskComplete,
+    getEmployees, saveEmployee, deleteEmployee, getSettings, saveSettings,
   };
 
 })();
