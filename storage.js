@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'https://xxxx.supabase.co';
-const SUPABASE_KEY = 'your_anon_key_here';
+const SUPABASE_URL = 'https://ylhqhjjakztxyrzoaaok.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsaHFoampha3p0eHlyem9hYW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5ODIyODksImV4cCI6MjA5MTU1ODI4OX0.79YaM7pdbimRTqcEs7paQ_0D5PziNE83lPbCtFD-ljg';
 
 const db = (table) => ({
   url: `${SUPABASE_URL}/rest/v1/${table}`,

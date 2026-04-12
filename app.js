@@ -1,4 +1,4 @@
-const GEMINI_KEY = typeof __GEMINI_KEY__ !== 'undefined' ? __GEMINI_KEY__ : '';
+const GEMINI_KEY = 'AIzaSyD8n94-HCoOOZDi9Ba1e7jYk9idDqexQPE';
 
 const App = {
   view: 'all',
