@@ -320,15 +320,17 @@ body { background: var(--bg); color: var(--text); display: flex; }
 .c-green .s-num { color: var(--green); }
 
 /* ─── TASK TABLE ─────────────────────────────────────── */
-.task-section { padding: 16px 24px 40px; flex: 1; }
+.task-section { padding: 16px 24px 40px; flex: 1; overflow: visible; }
 
 .table-wrap {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); box-shadow: var(--shadow);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .task-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.task-table thead tr { position: relative; z-index: 20; }
 
 .task-table thead th {
   background: var(--surface2); color: var(--text3);
@@ -429,6 +431,60 @@ input[type="checkbox"] {
 .e-ico { font-size: 36px; opacity: .35; }
 .e-title { font-size: 15px; font-weight: 600; color: var(--text2); }
 .e-sub { font-size: 13px; color: var(--text3); }
+
+/* ─── PAGE LOAD ANIMATION ────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.sidebar     { animation: fadeUp .35s ease both; }
+.topbar      { animation: fadeUp .35s .08s ease both; }
+.stats-row   { animation: fadeUp .35s .16s ease both; }
+.task-section{ animation: fadeUp .35s .24s ease both; }
+
+/* ─── STAT CARDS hover lift ──────────────────────────── */
+.stat-card {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+}
+
+/* ─── TASK ROW hover lift ────────────────────────────── */
+/* REPLACE the existing task row hover rules with: */
+.task-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background .15s, transform .2s ease, box-shadow .2s ease;
+  cursor: pointer;
+  position: relative;
+}
+.task-table tbody tr:hover {
+  background: var(--surface2);
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 16px 40px rgba(0,0,0,.09);
+  z-index: 1;
+}
+
+/* ─── TASK ROW staggered fade-in ─────────────────────── */
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.task-table tbody tr {
+  animation: rowIn .25s ease both;
+}
+.task-table tbody tr:nth-child(1)  { animation-delay: .03s; }
+.task-table tbody tr:nth-child(2)  { animation-delay: .06s; }
+.task-table tbody tr:nth-child(3)  { animation-delay: .09s; }
+.task-table tbody tr:nth-child(4)  { animation-delay: .12s; }
+.task-table tbody tr:nth-child(5)  { animation-delay: .15s; }
+.task-table tbody tr:nth-child(6)  { animation-delay: .18s; }
+.task-table tbody tr:nth-child(7)  { animation-delay: .21s; }
+.task-table tbody tr:nth-child(8)  { animation-delay: .24s; }
+.task-table tbody tr:nth-child(9)  { animation-delay: .27s; }
+.task-table tbody tr:nth-child(10) { animation-delay: .30s; }
 
 /* ─── VOICE PANEL ────────────────────────────────────── */
 .vp-overlay {

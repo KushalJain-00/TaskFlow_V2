@@ -380,7 +380,7 @@ function taskRow(t) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/></svg>
           </button>
           <button class="ra-btn ra-del" data-id="${t.id}" title="Delete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5  6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>
       </td>
@@ -390,11 +390,11 @@ function taskRow(t) {
 // ── STATS & BADGES ────────────────────────────────────────
 function renderStats() {
   const all = Storage.getAllTasks();
-  $('stat-total').textContent   = all.length;
-  $('stat-active').textContent  = all.filter(t => !t.completed).length;
-  $('stat-overdue').textContent = all.filter(t => !t.completed && isOverdue(t.dueDate)).length;
-  $('stat-soon').textContent    = all.filter(t => !t.completed && isDueSoon(t.dueDate)).length;
-  $('stat-done').textContent    = all.filter(t => t.completed).length;
+  animateCounter($('stat-total'),   all.length);
+  animateCounter($('stat-active'),  all.filter(t => !t.completed).length);
+  animateCounter($('stat-overdue'), all.filter(t => !t.completed && isOverdue(t.dueDate)).length);
+  animateCounter($('stat-soon'),    all.filter(t => !t.completed && isDueSoon(t.dueDate)).length);
+  animateCounter($('stat-done'),    all.filter(t => t.completed).length);
 }
 
 function renderBadges() {
@@ -822,6 +822,20 @@ function toast(msg) {
   el.toast.textContent = msg;
   el.toast.classList.add('show');
   toastTimer = setTimeout(() => el.toast.classList.remove('show'), 2600);
+}
+
+function animateCounter(el, target) {
+  const start = parseInt(el.textContent) || 0;
+  if (start === target) return;
+  const duration = 500;
+  const startTime = performance.now();
+  const tick = now => {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    el.textContent = Math.round(start + (target - start) * ease);
+    if (progress < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 // ── BOOT ──────────────────────────────────────────────────
