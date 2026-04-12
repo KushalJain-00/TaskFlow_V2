@@ -438,7 +438,10 @@ input[type="checkbox"] {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-.sidebar     { animation: fadeUp .35s ease both; }
+@media (min-width: 901px) {
+  .sidebar { animation: fadeUp .35s ease both; }
+}
+
 .topbar      { animation: fadeUp .35s .08s ease both; }
 .stats-row   { animation: fadeUp .35s .16s ease both; }
 .task-section{ animation: fadeUp .35s .24s ease both; }
@@ -465,6 +468,12 @@ input[type="checkbox"] {
   transform: translateY(-6px) scale(1.01);
   box-shadow: 0 16px 40px rgba(0,0,0,.09);
   z-index: 1;
+}
+@media (max-width: 900px) {
+  .task-table tbody tr:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 /* ─── TASK ROW staggered fade-in ─────────────────────── */
@@ -702,8 +711,9 @@ input[type="checkbox"] {
 
 /* ─── RESPONSIVE: ≤ 600px ────────────────────────────── */
 @media (max-width: 600px) {
-  .topbar { height: auto; padding: 10px 14px; }
-  .topbar-r { gap: 6px; }
+  .topbar { height: auto; padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+  .topbar-l { flex: 1; min-width: 0; }
+  .topbar-r { gap: 6px; flex-wrap: wrap; }
   .btn-label { display: none; }
   .btn-primary { padding: 0 10px; }
 
@@ -727,7 +737,14 @@ input[type="checkbox"] {
 
   .voice-panel { width: calc(100vw - 28px); right: 14px; bottom: 14px; }
 }
+.row-acts { opacity: 1; }
 
+@media (max-width: 360px) {
+  .stats-row { gap: 6px; }
+  .stat-card { padding: 8px; min-width: 52px; }
+  .s-num { font-size: 18px; }
+  .s-lbl { font-size: 10px; }
+}
 /* ─── RESPONSIVE: ≤ 400px ────────────────────────────── */
 @media (max-width: 400px) {
   .tc-date { display: none; }
