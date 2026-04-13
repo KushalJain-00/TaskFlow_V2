@@ -79,6 +79,7 @@ const el = {
   coModalCancel:  $('coModalCancel'),
   coModalSave:    $('coModalSave'),
   coName:         $('coName'),
+  exportBtn:      $('exportBtn'),
 };
 
 // ── INIT ──────────────────────────────────────────────────
@@ -105,6 +106,7 @@ function bindEvents() {
   el.sidebarClose.addEventListener('click', toggleSidebar);
   el.mobOverlay.addEventListener('click', closeMobSidebar);
   el.darkToggle.addEventListener('click', toggleDark);
+  el.exportBtn.addEventListener('click', () => openExportModal());
 
   document.querySelectorAll('.nav-link[data-view]').forEach(a => {
     a.addEventListener('click', e => {
@@ -545,6 +547,143 @@ async function saveCompany() {
   await refreshCache();
   renderAll();
   toast(`${name} added ✓`);
+}
+
+let exportFormat = 'csv';
+
+function openExportModal() {
+  closeMobSidebar();
+  document.getElementById('exportModalOverlay')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'exportModalOverlay';
+  overlay.className = 'modal-overlay open';
+
+  const empOptions = App._employees.map(e =>
+    `<option value="emp:${e.id}">${esc(e.name)}</option>`).join('');
+  const coOptions = App._companies.map(c =>
+    `<option value="co:${c.id}">${esc(c.name)}</option>`).join('');
+
+  overlay.innerHTML = `
+    <div class="modal export-modal">
+      <div class="modal-hd">
+        <h2 class="modal-ttl">Export Tasks</h2>
+        <button class="icon-btn" id="exportModalClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="gap:16px">
+        <div class="export-section">
+          <label class="fl">Which tasks?</label>
+          <select class="fi" id="exportScope">
+            <option value="all">All Tasks</option>
+            <option value="my">My Tasks</option>
+            <option value="team">Team Tasks</option>
+            <option value="overdue">Overdue Only</option>
+            <option value="completed">Completed Only</option>
+            ${empOptions ? `<optgroup label="By Employee">${empOptions}</optgroup>` : ''}
+            ${coOptions  ? `<optgroup label="By Company">${coOptions}</optgroup>`  : ''}
+          </select>
+        </div>
+        <div class="export-section">
+          <label class="fl">Format</label>
+          <div class="format-toggle">
+            <button id="fmtCsv" class="active" onclick="setExportFmt('csv')">CSV</button>
+            <button id="fmtXls" onclick="setExportFmt('xlsx')">Excel (.xls)</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn-ghost" id="exportModalClose2">Cancel</button>
+        <button class="btn-primary" id="exportConfirm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  const close = () => overlay.remove();
+  document.getElementById('exportModalClose').addEventListener('click', close);
+  document.getElementById('exportModalClose2').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.getElementById('exportConfirm').addEventListener('click', () => {
+    runExport(document.getElementById('exportScope').value, exportFormat);
+    close();
+  });
+
+  // reset format toggle to current
+  setExportFmt(exportFormat);
+}
+
+window.setExportFmt = function(fmt) {
+  exportFormat = fmt;
+  document.getElementById('fmtCsv')?.classList.toggle('active', fmt === 'csv');
+  document.getElementById('fmtXls')?.classList.toggle('active', fmt === 'xlsx');
+};
+
+function runExport(scope, format) {
+  let tasks = [...App._tasks];
+
+  if      (scope === 'my')        tasks = tasks.filter(t => t.assignee === 'me');
+  else if (scope === 'team')      tasks = tasks.filter(t => t.assignee !== 'me');
+  else if (scope === 'overdue')   tasks = tasks.filter(t => !t.completed && isOverdue(t.dueDate));
+  else if (scope === 'completed') tasks = tasks.filter(t => t.completed);
+  else if (scope.startsWith('emp:')) {
+    const id = scope.slice(4);
+    tasks = tasks.filter(t => t.assignee === id);
+  } else if (scope.startsWith('co:')) {
+    const id = scope.slice(3);
+    tasks = tasks.filter(t => t.company === id);
+  }
+
+  const headers = ['Title','Description','Assignee','Company','Priority','Status','Assigned Date','Due Date','Tags','Completed','Created'];
+  const rows = tasks.map(t => {
+    const si = statusInfo(t);
+    return [
+      t.title,
+      t.description || '',
+      getAssigneeName(t.assignee),
+      App._companies.find(c => c.id === t.company)?.name || '',
+      capFirst(t.priority),
+      si.label,
+      fmtDate(t.assignedDate),
+      fmtDate(t.dueDate),
+      (t.tags || []).join(', '),
+      t.completed ? 'Yes' : 'No',
+      fmtDatetime(t.createdAt),
+    ];
+  });
+
+  if (format === 'csv') {
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(','))
+      .join('\n');
+    download('taskflow-export.csv', 'text/csv', csv);
+  } else {
+    const xls = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+  <Worksheet ss:Name="Tasks"><Table>
+    ${[headers, ...rows].map(row =>
+      `<Row>${row.map(v =>
+        `<Cell><Data ss:Type="String">${String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</Data></Cell>`
+      ).join('')}</Row>`
+    ).join('\n    ')}
+  </Table></Worksheet>
+</Workbook>`;
+    download('taskflow-export.xls', 'application/vnd.ms-excel', xls);
+  }
+}
+
+function download(filename, mime, content) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(`Downloaded ${filename}`);
 }
 
 // ── DRAWER ────────────────────────────────────────────────
