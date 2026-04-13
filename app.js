@@ -1,4 +1,6 @@
-const GEMINI_KEY = 'AIzaSyD8n94-HCoOOZDi9Ba1e7jYk9idDqexQPE';
+// Gemini key comes from user's browser localStorage (set at signup or via voice prompt)
+// DO NOT hardcode a key here — each user stores their own
+let GEMINI_KEY = '';
 
 const App = {
   view: 'all',
@@ -83,11 +85,36 @@ const el = {
 };
 
 // ── INIT ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  // Auth gate — redirects to login.html if no valid session
+  const ok = await Auth.init();
+  if (!ok) return;
+
+  // Per-user Gemini key from localStorage
+  GEMINI_KEY = Auth.getGeminiKey();
+
+  // Populate user info in sidebar
+  const name = App._settings?.managerName || Auth.getUserName();
+  const nameEl = $('userNameSidebar');
+  const avEl   = $('userAvatar');
+  if (nameEl) nameEl.textContent = name;
+  if (avEl)   avEl.textContent   = name[0].toUpperCase();
+
+  init();
+});
+
 async function init() {
   el.taskAssigned.value = today();
   loadTheme();
   bindEvents();
   await refreshCache();
+
+  // Sync manager name from auth metadata if not yet in settings
+  if (!App._settings.managerName) {
+    App._settings.managerName = Auth.getUserName();
+    await Storage.saveSettings({ managerName: App._settings.managerName });
+  }
+
   renderAll();
 }
 
@@ -747,6 +774,24 @@ function toggleVoicePanel() {
   el.voicePanel.classList.contains('show') ? closeVoicePanel() : openVoicePanel();
 }
 function openVoicePanel() {
+  // If no Gemini key, ask the user to set one first
+  if (!GEMINI_KEY) {
+    Auth.promptGeminiKey(key => {
+      if (key) {
+        GEMINI_KEY = key;
+        _doOpenVoicePanel();
+      }
+      // If skipped, open anyway — regex fallback will be used
+      else {
+        _doOpenVoicePanel();
+      }
+    });
+    return;
+  }
+  _doOpenVoicePanel();
+}
+
+function _doOpenVoicePanel() {
   el.voicePanel.classList.add('show');
   el.vpOverlay.classList.add('show');
   el.voiceBtn.classList.add('active');
@@ -960,4 +1005,4 @@ function animateCounter(el, target) {
   requestAnimationFrame(tick);
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// DOMContentLoaded is handled at the top of this file via Auth.init()

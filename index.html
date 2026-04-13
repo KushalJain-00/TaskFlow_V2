@@ -73,10 +73,13 @@
   <div class="sidebar-footer">
     <div class="user-row">
       <div class="av av-indigo" id="userAvatar">M</div>
-      <div>
+      <div style="flex:1;min-width:0;">
         <div class="u-name" id="userNameSidebar">Manager</div>
         <div class="u-role">Admin</div>
       </div>
+      <button class="icon-btn signout-btn" onclick="Auth.signOut()" title="Sign out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
     </div>
   </div>
 </aside>
@@ -318,6 +321,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="auth.js"></script>
 <script src="storage.js"></script>
 <script src="app.js"></script>
 </body>
