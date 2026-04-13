@@ -55,6 +55,13 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 5v14M5 12h14"/></svg>
       Add Employee
     </button>
+
+    <p class="nav-label" style="margin-top:24px">COMPANIES</p>
+    <ul class="nav-list" id="companyNav"></ul>
+    <button class="add-emp-btn" id="addCompanyBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M12 5v14M5 12h14"/></svg>
+      Add Company
+    </button>
   </nav>
 
   <div class="sidebar-footer">
@@ -215,6 +222,12 @@
           </select>
         </div>
       </div>
+      <div class="fg">
+        <label class="fl">Company</label>
+        <select class="fi" id="taskCompany">
+          <option value="">No Company</option>
+        </select>
+      </div>
       <div class="fg-row">
         <div class="fg">
           <label class="fl">Assigned Date</label>
@@ -259,6 +272,28 @@
     <div class="modal-ft">
       <button class="btn-ghost" id="empModalCancel">Cancel</button>
       <button class="btn-primary" id="empModalSave">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: COMPANY -->
+<div class="modal-overlay" id="companyModal">
+  <div class="modal modal-sm">
+    <div class="modal-hd">
+      <h2 class="modal-ttl">Add Company</h2>
+      <button class="icon-btn" id="coModalClose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label class="fl">Company Name <span class="req">*</span></label>
+        <input type="text" class="fi" id="coName" placeholder="e.g. Acme Corp" />
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-ghost" id="coModalCancel">Cancel</button>
+      <button class="btn-primary" id="coModalSave">Add</button>
     </div>
   </div>
 </div>

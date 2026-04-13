@@ -117,6 +117,52 @@ const Storage = (() => {
     await _delete('employees', id);
   }
 
+  // ── COMPANIES ──────────────────────────────────────────
+  function getCompanies() { 
+    return _get('taskflow_companies') || []; 
+  }
+
+  function saveCompany(data) {
+    const companies = getCompanies();
+    if (data.id) {
+      const idx = companies.findIndex(c => c.id === data.id);
+      if (idx === -1) return null;
+      companies[idx] = { ...companies[idx], ...data };
+      _set('taskflow_companies', companies);
+      return companies[idx];
+    }
+    const newCo = { id: _generateId(), name: data.name, createdAt: new Date().toISOString() };
+    companies.push(newCo);
+    _set('taskflow_companies', companies);
+    return newCo;
+  }
+
+  function deleteCompany(id) {
+    _set('taskflow_companies', getCompanies().filter(c => c.id !== id));
+  }
+
+  // REPLACE WITH:
+  async function getCompanies() {
+    return await _get('companies');
+  }
+
+  async function saveCompany(data) {
+    if (data.id) {
+      const companies = await getCompanies();
+      const existing = companies.find(c => c.id === data.id);
+      const updated = { ...existing, ...data };
+      await _upsert('companies', updated.id, updated);
+      return updated;
+    }
+    const newCo = { id: _id(), name: data.name, createdAt: new Date().toISOString() };
+    await _upsert('companies', newCo.id, newCo);
+    return newCo;
+  }
+
+  async function deleteCompany(id) {
+    await _delete('companies', id);
+  }
+
   // ── SETTINGS ───────────────────────────────────────────
   async function getSettings() {
     return await _get('settings');
@@ -132,6 +178,7 @@ const Storage = (() => {
   return {
     getAllTasks, getTaskById, saveTask, deleteTask, toggleTaskComplete,
     getEmployees, saveEmployee, deleteEmployee, getSettings, saveSettings,
+    getCompanies, saveCompany, deleteCompany,
   };
 
 })();

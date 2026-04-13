@@ -11,6 +11,7 @@ const App = {
   voiceParsed: null,
   _tasks: [],
   _employees: [],
+  _companies: [],
   _settings: {},
 };
 
@@ -70,6 +71,14 @@ const el = {
   vpRetry:        $('vpRetry'),
   vpConfirm:      $('vpConfirm'),
   toast:          $('toast'),
+  addCompanyBtn:  $('addCompanyBtn'),
+  companyNav:     $('companyNav'),
+  taskCompany:    $('taskCompany'),
+  coModal:        $('companyModal'),
+  coModalClose:   $('coModalClose'),
+  coModalCancel:  $('coModalCancel'),
+  coModalSave:    $('coModalSave'),
+  coName:         $('coName'),
 };
 
 // ── INIT ──────────────────────────────────────────────────
@@ -82,10 +91,11 @@ async function init() {
 }
 
 async function refreshCache() {
-  [App._tasks, App._employees, App._settings] = await Promise.all([
+  [App._tasks, App._employees, App._settings, App._companies] = await Promise.all([
     Storage.getAllTasks(),
     Storage.getEmployees(),
     Storage.getSettings(),
+    Storage.getCompanies(),
   ]);
 }
 
@@ -135,7 +145,7 @@ function bindEvents() {
   });
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { closeTaskModal(); closeEmpModal(); closeDrawer(); closeVoicePanel(); }
+    if (e.key === 'Escape') { closeTaskModal(); closeEmpModal(); closeCoModal(); closeDrawer(); closeVoicePanel(); }
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); openTaskModal(); }
   });
 
@@ -145,6 +155,12 @@ function bindEvents() {
   el.vpMic.addEventListener('click', startVoice);
   el.vpRetry.addEventListener('click', resetVoice);
   el.vpConfirm.addEventListener('click', confirmVoiceTask);
+
+  el.addCompanyBtn.addEventListener('click', () => openCoModal());
+  el.coModalClose.addEventListener('click', closeCoModal);
+  el.coModalCancel.addEventListener('click', closeCoModal);
+  el.coModalSave.addEventListener('click', saveCompany);
+  el.coModal.addEventListener('click', e => { if (e.target === el.coModal) closeCoModal(); });
 }
 
 // ── THEME ─────────────────────────────────────────────────
@@ -196,12 +212,14 @@ function setView(view, empId = null) {
 
   if (empId) {
     const emp = App._employees.find(e => e.id === empId);
-    el.pageTitle.textContent = emp ? `${emp.name}'s Tasks` : 'Employee Tasks';
-    el.pageSub.textContent = emp?.role || 'Employee';
-  } else {
-    const meta = viewMeta[view] || ['Tasks', ''];
-    el.pageTitle.textContent = meta[0];
-    el.pageSub.textContent = meta[1];
+    const co  = App._companies.find(c => c.id === empId);
+    if (co) {
+      el.pageTitle.textContent = co.name;
+      el.pageSub.textContent = 'Company tasks';
+    } else {
+      el.pageTitle.textContent = emp ? `${emp.name}'s Tasks` : 'Employee Tasks';
+      el.pageSub.textContent = emp?.role || 'Employee';
+    }
   }
 
   renderTasks();
@@ -211,6 +229,8 @@ function setView(view, empId = null) {
 function renderAll() {
   renderEmpNav();
   renderAssigneeDropdown();
+  renderCompanyNav();
+  renderCompanyDropdown();
   renderTasks();
   renderStats();
   renderBadges();
@@ -260,6 +280,51 @@ function renderAssigneeDropdown() {
   });
 }
 
+// ── COMPANY NAV ──────────────────────────────────────────
+function renderCompanyNav() {
+  el.companyNav.innerHTML = '';
+  App._companies.forEach(co => {
+    const count = App._tasks.filter(t => t.company === co.id && !t.completed).length;
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <a href="#" class="nav-link nav-link-co" data-co="${co.id}">
+        <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="15" rx="1.5"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(co.name)}</span>
+        ${count ? `<span class="nb">${count}</span>` : ''}
+        <button class="emp-del" data-id="${co.id}" title="Remove">×</button>
+      </a>`;
+    li.querySelector('.nav-link-co').addEventListener('click', e => {
+      if (e.target.classList.contains('emp-del')) return;
+      e.preventDefault();
+      setView('company', co.id);
+      closeMobSidebar();
+    });
+    li.querySelector('.emp-del').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm(`Remove ${co.name}?`)) return;
+      // strip company from its tasks
+      await Promise.all(App._tasks.filter(t => t.company === co.id).map(t => Storage.saveTask({ ...t, company: '' })));
+      await Storage.deleteCompany(co.id);
+      if (App.empFilter === co.id) setView('all');
+      await refreshCache();
+      renderAll();
+      toast(`${co.name} removed`);
+    });
+    el.companyNav.appendChild(li);
+  });
+}
+
+// ── COMPANY DROPDOWN ─────────────────────────────────────
+function renderCompanyDropdown() {
+  el.taskCompany.innerHTML = '<option value="">No Company</option>';
+  App._companies.forEach(co => {
+    const o = document.createElement('option');
+    o.value = co.id;
+    o.textContent = co.name;
+    el.taskCompany.appendChild(o);
+  });
+}
+
 // ── TASK TABLE ────────────────────────────────────────────
 function renderTasks() {
   let tasks = [...App._tasks];
@@ -269,6 +334,7 @@ function renderTasks() {
   else if (App.view === 'overdue')   tasks = tasks.filter(t => !t.completed && isOverdue(t.dueDate));
   else if (App.view === 'completed') tasks = tasks.filter(t => t.completed);
   else if (App.view === 'employee' && App.empFilter) tasks = tasks.filter(t => t.assignee === App.empFilter);
+  else if (App.view === 'company' && App.empFilter) tasks = tasks.filter(t => t.company === App.empFilter);
 
   if (App.search) tasks = tasks.filter(t =>
     t.title.toLowerCase().includes(App.search) ||
@@ -430,6 +496,7 @@ async function saveTask() {
     title, description: el.taskDesc.value.trim(),
     assignee: el.taskAssignee.value, priority: el.taskPriority.value,
     assignedDate: el.taskAssigned.value, dueDate: due, tags,
+    company: el.taskCompany.value,
   };
 
   closeTaskModal();
@@ -461,6 +528,25 @@ async function saveEmployee() {
   toast(`${name} added ✓`);
 }
 
+// ── COMPANY MODAL ────────────────────────────────────────
+function openCoModal() {
+  el.coName.value = '';
+  el.coModal.classList.add('open');
+  setTimeout(() => el.coName.focus(), 80);
+}
+function closeCoModal() { el.coModal.classList.remove('open'); }
+
+async function saveCompany() {
+  const name = el.coName.value.trim();
+  if (!name) { shake(el.coName); return; }
+  closeCoModal();
+  toast('Saving…');
+  await Storage.saveCompany({ name });
+  await refreshCache();
+  renderAll();
+  toast(`${name} added ✓`);
+}
+
 // ── DRAWER ────────────────────────────────────────────────
 function openDrawer(id) {
   const t = App._tasks.find(t => t.id === id);
@@ -487,6 +573,7 @@ function openDrawer(id) {
     </div>
     ${t.completedAt ? `<div class="d-field"><div class="d-label">Completed</div><div class="d-val">${fmtDatetime(t.completedAt)}</div></div>` : ''}
     ${t.description ? `<div class="d-field"><div class="d-label">Description</div><div class="d-desc" style="margin-top:4px">${esc(t.description)}</div></div>` : ''}
+    ${t.company ? (() => { const co = App._companies.find(c => c.id === t.company); return co ? `<div class="d-field"><div class="d-label">Company</div><div class="d-val">${esc(co.name)}</div></div>` : ''; })() : ''}
     ${(t.tags||[]).length ? `<div class="d-field"><div class="d-label">Tags</div><div class="t-tags" style="margin-top:4px">${t.tags.map(g=>`<span class="tag">${esc(g)}</span>`).join('')}</div></div>` : ''}
     <div class="d-field"><div class="d-label">Created</div><div class="d-val">${fmtDatetime(t.createdAt)}</div></div>
     <div class="d-acts">
@@ -573,6 +660,7 @@ function startVoice() {
 
 async function parseVoiceInput(text) {
   const empList = App._employees.map(e => `${e.id}:${e.name}`).join(', ') || 'none';
+  const coList = App._companies.map(c => `${c.id}:${c.name}`).join(', ') || 'none';
 
   if (GEMINI_KEY) {
     try {
@@ -584,7 +672,8 @@ async function parseVoiceInput(text) {
 Voice: "${text}"
 Today: ${today()}
 Employees (id:name): ${empList}
-Return: {"title":"...","assigneeId":"me or exact employee id","priority":"high|medium|low","dueDate":"YYYY-MM-DD or empty string"}
+Companies (id:name): ${coList}
+Return: {"title":"...","assigneeId":"me or exact employee id","priority":"high|medium|low","dueDate":"YYYY-MM-DD or empty string","companyId":"matching company id or empty string"}
 - title: the task only, clean
 - assigneeId: fuzzy-match name to list by id. If no match use "me"
 - priority: high=urgent/critical/asap, low=whenever/no rush, else medium
@@ -635,7 +724,12 @@ Return: {"title":"...","assigneeId":"me or exact employee id","priority":"high|m
   title = title.replace(/\s{2,}/g,' ').replace(/^[,\s]+|[,\s]+$/g,'').trim();
   if (title) title = title[0].toUpperCase() + title.slice(1);
 
-  App.voiceParsed = { title, assigneeId, priority, dueDate };
+  let companyId = '';
+  for (const co of App._companies) {
+    if (t.includes(co.name.toLowerCase())) { companyId = co.id; break; }
+  }
+
+  App.voiceParsed = { title, assigneeId, priority, dueDate, companyId };
   showVoicePreview();
 }
 
@@ -648,7 +742,8 @@ function showVoicePreview() {
     <strong>Task:</strong> ${esc(p.title || '—')}<br>
     <strong>Assignee:</strong> ${esc(whoName)}<br>
     <strong>Priority:</strong> ${capFirst(p.priority)}<br>
-    <strong>Due:</strong> ${p.dueDate ? fmtDate(p.dueDate) : 'Not detected'}`;
+    <strong>Due:</strong> ${p.dueDate ? fmtDate(p.dueDate) : 'Not detected'}<br>
+    ${p.companyId ? `<strong>Company:</strong> ${esc(App._companies.find(c => c.id === p.companyId)?.name || '')}` : ''}`;
   el.vpParsed.style.display = 'block';
   el.vpActions.style.display = 'flex';
   el.vpStatus.textContent = 'Review and confirm';
@@ -664,6 +759,7 @@ async function confirmVoiceTask() {
     assignee: p.assigneeId || 'me',
     priority: p.priority || 'medium',
     assignedDate: today(), dueDate: p.dueDate || '', tags: [],
+    company: p.companyId || '',
   });
   await refreshCache();
   renderAll();
