@@ -1,6 +1,3 @@
-const SUPABASE_URL = 'https://ylhqhjjakztxyrzoaaok.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsaHFoampha3p0eHlyem9hYW9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5ODIyODksImV4cCI6MjA5MTU1ODI4OX0.79YaM7pdbimRTqcEs7paQ_0D5PziNE83lPbCtFD-ljg';
-
 const Storage = (() => {
 
   let _cache = { tasks: null, employees: null, settings: null, companies: null };
