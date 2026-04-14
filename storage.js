@@ -16,7 +16,7 @@ const Storage = (() => {
 
   async function _get(table) {
     if (_cache[table]) return _cache[table];
-    const r = await fetch(`${_url(table)}?select=*`, { headers: _headers() });
+    const r = await fetch(`${_url(table)}?select=*`, { headers: _headers(), cache: 'no-store' });
     const rows = await r.json();
     if (table === 'settings') {
       _cache[table] = rows[0]?.data || { managerName: 'Manager' };
@@ -26,19 +26,23 @@ const Storage = (() => {
     return _cache[table];
   }
 
-  async function _upsert(table, id, data) {
+  async function _upsert(table, data) {
     _cache[table] = null;
-    const userId = (typeof Auth !== 'undefined') ? Auth.getUserId() : null;
-    const payload = userId ? { ...data, userId } : data;
-    const res = await fetch(_url(table), {
-      method: 'POST',
+    const { id, ...rest } = data;
+
+    // ALL fields go into the JSONB 'data' column — table only has id + data columns
+    const dbPayload = { data: rest };
+
+    const checkRes = await fetch(`${_url(table)}?id=eq.${id}`, { headers: _headers() });
+    const exists = (await checkRes.json()).length > 0;
+
+    const res = await fetch(exists ? `${_url(table)}?id=eq.${id}` : _url(table), {
+      method: exists ? 'PATCH' : 'POST',
       headers: _headers(),
-      body: JSON.stringify({ id, data: payload }),
+      body: JSON.stringify(exists ? dbPayload : { id, ...dbPayload }),
     });
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('Supabase upsert error on ' + table + ':', err);
-    }
+
+    if (!res.ok) console.error(`Supabase error on ${table}:`, await res.text());
     return res;
   }
 
@@ -59,7 +63,11 @@ const Storage = (() => {
     if (taskData.id) {
       const existing = (await getAllTasks()).find(t => t.id === taskData.id);
       const updated = { ...existing, ...taskData, updatedAt: now };
-      await _upsert('tasks', updated.id, updated);
+      
+      const res = await _upsert('tasks', updated);
+      if (res && !res.ok) {
+        alert("Failed to save edited task! Check browser console for exact Supabase error.");
+      }
       return updated;
     }
     const newTask = {
@@ -68,7 +76,7 @@ const Storage = (() => {
       dueDate: '', tags: [], completed: false, completedAt: null,
       createdAt: now, updatedAt: now, ...taskData,
     };
-    await _upsert('tasks', newTask.id, newTask);
+    await _upsert('tasks', newTask);
     return newTask;
   }
 
@@ -80,7 +88,7 @@ const Storage = (() => {
     task.completed   = !task.completed;
     task.completedAt = task.completed ? new Date().toISOString() : null;
     task.updatedAt   = new Date().toISOString();
-    await _upsert('tasks', id, task);
+    await _upsert('tasks', task);
     return task;
   }
 
@@ -90,14 +98,14 @@ const Storage = (() => {
     if (data.id) {
       const existing = (await getEmployees()).find(e => e.id === data.id);
       const updated = { ...existing, ...data };
-      await _upsert('employees', updated.id, updated);
+      await _upsert('employees', updated);
       return updated;
     }
     const newEmp = {
       id: _id(), name: data.name || 'Unknown',
       role: data.role || '', createdAt: new Date().toISOString(),
     };
-    await _upsert('employees', newEmp.id, newEmp);
+    await _upsert('employees', newEmp);
     return newEmp;
   }
 
@@ -109,11 +117,11 @@ const Storage = (() => {
     if (data.id) {
       const existing = (await getCompanies()).find(c => c.id === data.id);
       const updated = { ...existing, ...data };
-      await _upsert('companies', updated.id, updated);
+      await _upsert('companies', updated);
       return updated;
     }
     const newCo = { id: _id(), name: data.name, createdAt: new Date().toISOString() };
-    await _upsert('companies', newCo.id, newCo);
+    await _upsert('companies', newCo);
     return newCo;
   }
 
@@ -126,7 +134,7 @@ const Storage = (() => {
     const updated = { ...current, ...settings };
     _cache.settings = updated;
     const userId = (typeof Auth !== 'undefined') ? Auth.getUserId() : 'singleton';
-    await _upsert('settings', 'singleton_' + userId, updated);
+    await _upsert('settings', updated);
   }
 
   return {

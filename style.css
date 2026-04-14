@@ -299,6 +299,9 @@ body { background: var(--bg); color: var(--text); display: flex; }
   display: flex; gap: 12px;
   padding: 16px 24px 0; flex-wrap: nowrap; overflow-x: auto;
   scrollbar-width: none;
+  position: sticky; top: var(--topbar-h); z-index: 85;
+  background: var(--surface);
+  box-shadow: 0 16px 28px rgba(0,0,0,.08);
 }
 .stats-row::-webkit-scrollbar { display: none; }
 
@@ -320,17 +323,20 @@ body { background: var(--bg); color: var(--text); display: flex; }
 .c-green .s-num { color: var(--green); }
 
 /* ─── TASK TABLE ─────────────────────────────────────── */
-.task-section { padding: 16px 24px 40px; flex: 1; overflow: visible; }
+.task-section {
+  display: flex; flex-direction: column; flex: 1; min-height: 0;
+  padding: 16px 24px 40px; overflow: hidden;
+}
 
 .table-wrap {
+  flex: 1; min-height: 0; overflow: auto;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); box-shadow: var(--shadow);
-  overflow: visible;
 }
 
 .task-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
-.task-table thead tr { position: relative; z-index: 20; }
+.task-table thead tr { position: sticky; top: 0; z-index: 30; background: var(--surface2); }
 
 .task-table thead th {
   background: var(--surface2); color: var(--text3);
@@ -363,8 +369,15 @@ body { background: var(--bg); color: var(--text); display: flex; }
 /* Row state indicators */
 .row-overdue td:first-child { box-shadow: inset 3px 0 0 var(--red); }
 .row-soon    td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
-.row-done { opacity: .55; }
-.row-done .t-title { text-decoration: line-through; color: var(--text3); }
+.row-done {
+  opacity: .65;
+  background: rgba(16,185,129,.06);
+}
+.row-done .t-title {
+  text-decoration: line-through;
+  color: var(--text3);
+}
+.row-done .t-tags { opacity: .65; }
 
 /* Task title cell */
 .t-cell { display: flex; flex-direction: column; gap: 3px; }
@@ -694,7 +707,10 @@ input[type="checkbox"] {
 
   .hide-sm { display: none; }
 
-  .stats-row { padding: 12px 16px 0; gap: 8px; }
+  .stats-row {
+    position: sticky; top: var(--topbar-h); z-index: 85;
+    padding: 12px 16px 0; gap: 8px;
+  }
   .stat-card { padding: 10px 12px; min-width: 70px; }
   .s-num { font-size: 22px; }
 
@@ -720,7 +736,10 @@ input[type="checkbox"] {
   .s-input { width: 130px; }
   .s-input:focus { width: 150px; }
 
-  .stats-row { padding: 10px 14px 0; }
+  .stats-row {
+    position: sticky; top: var(--topbar-h); z-index: 85;
+    padding: 10px 14px 0;
+  }
   .stat-card { padding: 9px 10px; min-width: 60px; }
   .s-num { font-size: 20px; }
   .s-lbl { font-size: 10.5px; }

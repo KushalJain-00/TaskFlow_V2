@@ -125,6 +125,16 @@ async function refreshCache() {
     Storage.getSettings(),
     Storage.getCompanies(),
   ]);
+  await purgeOldCompletedTasks();
+}
+
+async function purgeOldCompletedTasks() {
+  if (!Array.isArray(App._tasks) || !App._tasks.length) return;
+  const cutoff = Date.now() - 21 * 24 * 60 * 60 * 1000;
+  const expired = App._tasks.filter(t => t.completed && t.completedAt && new Date(t.completedAt).getTime() < cutoff);
+  if (!expired.length) return;
+  await Promise.all(expired.map(t => Storage.deleteTask(t.id)));
+  App._tasks = await Storage.getAllTasks();
 }
 
 // ── EVENTS ────────────────────────────────────────────────
@@ -374,6 +384,7 @@ function renderTasks() {
 
   const priOrder = { high: 0, medium: 1, low: 2 };
   tasks.sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
     const av = App.sortKey === 'priority' ? (priOrder[a.priority] ?? 1) : (a[App.sortKey] || '');
     const bv = App.sortKey === 'priority' ? (priOrder[b.priority] ?? 1) : (b[App.sortKey] || '');
     if (av < bv) return App.sortDir === 'asc' ? -1 : 1;
@@ -494,6 +505,7 @@ function openTaskModal(id = null) {
     el.taskPriority.value = t.priority;
     el.taskAssigned.value = t.assignedDate || '';
     el.taskDue.value      = t.dueDate || '';
+    el.taskCompany.value  = t.company || '';
     el.taskTags.value     = (t.tags || []).join(', ');
   } else {
     el.modalTitle.textContent = 'New Task';
@@ -501,6 +513,7 @@ function openTaskModal(id = null) {
     el.taskDesc.value     = '';
     el.taskAssignee.value = 'me';
     el.taskPriority.value = 'medium';
+    el.taskCompany.value  = '';
     el.taskAssigned.value = today();
     el.taskDue.value      = '';
     el.taskTags.value     = '';
@@ -528,11 +541,19 @@ async function saveTask() {
     company: el.taskCompany.value,
   };
 
+  const currentEditId = App.editId;
   closeTaskModal();
   toast('Saving…');
 
-  if (App.editId) { data.id = App.editId; await Storage.saveTask(data); toast('Task updated ✓'); }
-  else { await Storage.saveTask(data); toast('Task added ✓'); }
+  if (currentEditId) {
+    const existing = App._tasks.find(t => t.id === currentEditId) || {};
+    const updated = { ...existing, ...data, id: currentEditId };
+    await Storage.saveTask(updated);
+    toast('Task updated ✓');
+  } else {
+    await Storage.saveTask(data);
+    toast('Task added ✓');
+  }
 
   await refreshCache();
   renderAll();
