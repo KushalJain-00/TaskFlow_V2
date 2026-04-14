@@ -138,9 +138,8 @@ const Storage = (() => {
 
   async function saveSettings(settings) {
     const current = await getSettings();
-    const updated = { ...current, ...settings };
+    const updated = { ...current, ...settings, id: Auth.getUserId() };
     _cache.settings = updated;
-    const userId = (typeof Auth !== 'undefined') ? Auth.getUserId() : 'singleton';
     await _upsert('settings', updated);
   }
 
