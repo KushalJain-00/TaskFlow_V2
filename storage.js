@@ -16,7 +16,12 @@ const Storage = (() => {
 
   async function _get(table) {
     if (_cache[table]) return _cache[table];
-    const r = await fetch(`${_url(table)}?select=*`, { headers: _headers(), cache: 'no-store' });
+    const userId = (typeof Auth !== 'undefined') ? Auth.getUserId() : null;
+    // ↓ Add user_id filter to the query
+    const r = await fetch(`${_url(table)}?select=*&user_id=eq.${userId}`, { 
+      headers: _headers(), 
+      cache: 'no-store' 
+    });
     const rows = await r.json();
     if (table === 'settings') {
       _cache[table] = rows[0]?.data || { managerName: 'Manager' };
@@ -30,8 +35,10 @@ const Storage = (() => {
     _cache[table] = null;
     const { id, ...rest } = data;
 
-    // ALL fields go into the JSONB 'data' column — table only has id + data columns
-    const dbPayload = { data: rest };
+    const userId = (typeof Auth !== 'undefined') ? Auth.getUserId() : null;
+
+    // user_id goes as a real column, everything else in data JSONB
+    const dbPayload = { data: rest, user_id: userId };  // ← ADD user_id here
 
     const checkRes = await fetch(`${_url(table)}?id=eq.${id}`, { headers: _headers() });
     const exists = (await checkRes.json()).length > 0;
@@ -39,7 +46,7 @@ const Storage = (() => {
     const res = await fetch(exists ? `${_url(table)}?id=eq.${id}` : _url(table), {
       method: exists ? 'PATCH' : 'POST',
       headers: _headers(),
-      body: JSON.stringify(exists ? dbPayload : { id, ...dbPayload }),
+      body: JSON.stringify(exists ? dbPayload : { id, ...dbPayload }),  // id + user_id + data
     });
 
     if (!res.ok) console.error(`Supabase error on ${table}:`, await res.text());
