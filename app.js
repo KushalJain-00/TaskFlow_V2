@@ -250,8 +250,8 @@ function setView(view, empId = null) {
   }
 
   if (empId) {
-    const emp = App._employees.find(e => e.id === empId);
-    const co  = App._companies.find(c => c.id === empId);
+    const emp = App._employees.find(e => String(e.id) === String(empId));
+    const co  = App._companies.find(c => String(c.id) === String(empId));
     if (co) {
       el.pageTitle.textContent = co.name;
       el.pageSub.textContent = 'Company tasks';
@@ -404,7 +404,7 @@ function renderTasks() {
 
   el.taskBody.querySelectorAll('.t-chk').forEach(cb => {
     cb.addEventListener('change', async () => {
-      const was = App._tasks.find(t => t.id === cb.dataset.id);
+      const was = App._tasks.find(t => String(t.id) === String(cb.dataset.id));
       await Storage.toggleTaskComplete(cb.dataset.id);
       await refreshCache();
       renderAll();
@@ -496,7 +496,7 @@ function openTaskModal(id = null) {
   renderAssigneeDropdown();
 
   if (id) {
-    const t = App._tasks.find(t => t.id === id);
+    const t = App._tasks.find(t => String(t.id) === String(id));
     if (!t) return;
     el.modalTitle.textContent = 'Edit Task';
     el.taskTitle.value    = t.title;
@@ -546,7 +546,7 @@ async function saveTask() {
   toast('Saving…');
 
   if (currentEditId) {
-    const existing = App._tasks.find(t => t.id === currentEditId) || {};
+    const existing = App._tasks.find(t => String(t.id) === String(currentEditId)) || {};
     const updated = { ...existing, ...data, id: currentEditId };
     await Storage.saveTask(updated);
     toast('Task updated ✓');
@@ -693,7 +693,7 @@ function runExport(scope, format) {
       t.title,
       t.description || '',
       getAssigneeName(t.assignee),
-      App._companies.find(c => c.id === t.company)?.name || '',
+      App._companies.find(c => String(c.id) === String(t.company))?.name || '',
       capFirst(t.priority),
       si.label,
       fmtDate(t.assignedDate),
@@ -736,7 +736,7 @@ function download(filename, mime, content) {
 
 // ── DRAWER ────────────────────────────────────────────────
 function openDrawer(id) {
-  const t = App._tasks.find(t => t.id === id);
+  const t = App._tasks.find(t => String(t.id) === String(id));
   if (!t) return;
   const si  = statusInfo(t);
   const who = getAssigneeName(t.assignee);
@@ -760,7 +760,7 @@ function openDrawer(id) {
     </div>
     ${t.completedAt ? `<div class="d-field"><div class="d-label">Completed</div><div class="d-val">${fmtDatetime(t.completedAt)}</div></div>` : ''}
     ${t.description ? `<div class="d-field"><div class="d-label">Description</div><div class="d-desc" style="margin-top:4px">${esc(t.description)}</div></div>` : ''}
-    ${t.company ? (() => { const co = App._companies.find(c => c.id === t.company); return co ? `<div class="d-field"><div class="d-label">Company</div><div class="d-val">${esc(co.name)}</div></div>` : ''; })() : ''}
+    ${t.company ? (() => { const co = App._companies.find(c => String(c.id) === String(t.company)); return co ? `<div class="d-field"><div class="d-label">Company</div><div class="d-val">${esc(co.name)}</div></div>` : ''; })() : ''}
     ${(t.tags||[]).length ? `<div class="d-field"><div class="d-label">Tags</div><div class="t-tags" style="margin-top:4px">${t.tags.map(g=>`<span class="tag">${esc(g)}</span>`).join('')}</div></div>` : ''}
     <div class="d-field"><div class="d-label">Created</div><div class="d-val">${fmtDatetime(t.createdAt)}</div></div>
     <div class="d-acts">
@@ -780,7 +780,7 @@ function closeDrawer() {
 }
 
 window.toggleDrawer = async id => {
-  const was = App._tasks.find(t => t.id === id);
+  const was = App._tasks.find(t => String(t.id) === String(id));
   await Storage.toggleTaskComplete(id);
   closeDrawer();
   await refreshCache();
@@ -942,13 +942,13 @@ function showVoicePreview() {
   const p = App.voiceParsed;
   const whoName = p.assigneeId === 'me'
     ? (App._settings.managerName || 'You')
-    : (App._employees.find(e => e.id === p.assigneeId)?.name || 'You');
+    : (App._employees.find(e => String(e.id) === String(p.assigneeId))?.name || 'You');
   el.vpParsed.innerHTML = `
     <strong>Task:</strong> ${esc(p.title || '—')}<br>
     <strong>Assignee:</strong> ${esc(whoName)}<br>
     <strong>Priority:</strong> ${capFirst(p.priority)}<br>
     <strong>Due:</strong> ${p.dueDate ? fmtDate(p.dueDate) : 'Not detected'}<br>
-    ${p.companyId ? `<strong>Company:</strong> ${esc(App._companies.find(c => c.id === p.companyId)?.name || '')}` : ''}`;
+    ${p.companyId ? `<strong>Company:</strong> ${esc(App._companies.find(c => String(c.id) === String(p.companyId))?.name || '')}` : ''}`;
   el.vpParsed.style.display = 'block';
   el.vpActions.style.display = 'flex';
   el.vpStatus.textContent = 'Review and confirm';
@@ -982,7 +982,7 @@ function statusInfo(t) {
 
 function getAssigneeName(id) {
   if (id === 'me') return App._settings.managerName || 'You';
-  return App._employees.find(e => e.id === id)?.name || 'Unknown';
+  return App._employees.find(e => String(e.id) === String(id))?.name || 'Unknown';
 }
 
 function isOverdue(d) { return d && new Date(d) < new Date(today()); }

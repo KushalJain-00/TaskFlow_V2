@@ -26,7 +26,7 @@ const Storage = (() => {
     if (table === 'settings') {
       _cache[table] = rows[0]?.data || { managerName: 'Manager' };
     } else {
-      _cache[table] = Array.isArray(rows) ? rows.map(r => r.data) : [];
+      _cache[table] = Array.isArray(rows) ? rows.map(r => ({ id: r.id, ...r.data })) : [];
     }
     return _cache[table];
   }
@@ -63,12 +63,12 @@ const Storage = (() => {
   }
 
   async function getAllTasks()    { return await _get('tasks'); }
-  async function getTaskById(id) { return (await getAllTasks()).find(t => t.id === id) || null; }
+  async function getTaskById(id) { return (await getAllTasks()).find(t => String(t.id) === String(id)) || null; }
 
   async function saveTask(taskData) {
     const now = new Date().toISOString();
     if (taskData.id) {
-      const existing = (await getAllTasks()).find(t => t.id === taskData.id);
+      const existing = (await getAllTasks()).find(t => String(t.id) === String(taskData.id));
       const updated = { ...existing, ...taskData, updatedAt: now };
       
       const res = await _upsert('tasks', updated);
@@ -90,7 +90,7 @@ const Storage = (() => {
   async function deleteTask(id) { await _delete('tasks', id); }
 
   async function toggleTaskComplete(id) {
-    const task = (await getAllTasks()).find(t => t.id === id);
+    const task = (await getAllTasks()).find(t => String(t.id) === String(id));
     if (!task) return null;
     task.completed   = !task.completed;
     task.completedAt = task.completed ? new Date().toISOString() : null;
@@ -103,7 +103,7 @@ const Storage = (() => {
 
   async function saveEmployee(data) {
     if (data.id) {
-      const existing = (await getEmployees()).find(e => e.id === data.id);
+      const existing = (await getEmployees()).find(e => String(e.id) === String(data.id));
       const updated = { ...existing, ...data };
       await _upsert('employees', updated);
       return updated;
@@ -122,7 +122,7 @@ const Storage = (() => {
 
   async function saveCompany(data) {
     if (data.id) {
-      const existing = (await getCompanies()).find(c => c.id === data.id);
+      const existing = (await getCompanies()).find(c => String(c.id) === String(data.id));
       const updated = { ...existing, ...data };
       await _upsert('companies', updated);
       return updated;
