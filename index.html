@@ -247,6 +247,22 @@
           <input type="date" class="fi" id="taskDueDate" />
         </div>
       </div>
+      <div class="fg-row">
+        <div class="fg">
+          <label class="fl">Reminder Time</label>
+          <input type="datetime-local" class="fi" id="taskReminder" />
+        </div>
+        <div class="fg">
+          <label class="fl">Repeat</label>
+          <select class="fi" id="taskRepeat">
+            <option value="none">None</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+      </div>
       <div class="fg">
         <label class="fl">Tags</label>
         <input type="text" class="fi" id="taskTags" placeholder="design, urgent (comma-separated)" />
@@ -320,6 +336,18 @@
 </aside>
 
 <div class="toast" id="toast"></div>
+
+<!-- REMINDER POPUP -->
+<div class="reminder-popup" id="reminderPopup">
+  <div class="rp-hd">
+    <strong>⏰ Reminder</strong>
+    <button class="icon-btn" id="rpClose">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="rp-title" id="rpTaskTitle"></div>
+  <div class="rp-due" id="rpTaskDue"></div>
+</div>
 
 <script src="auth.js"></script>
 <script src="storage.js"></script>

@@ -116,6 +116,7 @@ async function init() {
   }
 
   renderAll();
+  startReminderChecker();
 }
 
 async function refreshCache() {
@@ -200,6 +201,10 @@ function bindEvents() {
   el.coModalCancel.addEventListener('click', closeCoModal);
   el.coModalSave.addEventListener('click', saveCompany);
   el.coModal.addEventListener('click', e => { if (e.target === el.coModal) closeCoModal(); });
+
+  $('rpClose').addEventListener('click', () => {
+    $('reminderPopup').classList.remove('show');
+  });
 }
 
 // ── THEME ─────────────────────────────────────────────────
@@ -406,6 +411,9 @@ function renderTasks() {
     cb.addEventListener('change', async () => {
       const was = App._tasks.find(t => String(t.id) === String(cb.dataset.id));
       await Storage.toggleTaskComplete(cb.dataset.id);
+      if (!was.completed && was.repeat && was.repeat !== 'none') {
+        await generateNextRepeat(was);
+      }
       await refreshCache();
       renderAll();
       toast(was?.completed ? 'Reopened' : '✓ Completed');
@@ -507,6 +515,8 @@ function openTaskModal(id = null) {
     el.taskDue.value      = t.dueDate || '';
     el.taskCompany.value  = t.company || '';
     el.taskTags.value     = (t.tags || []).join(', ');
+    $('taskReminder').value = t.reminderTime || '';
+    $('taskRepeat').value   = t.repeat || 'none';
   } else {
     el.modalTitle.textContent = 'New Task';
     el.taskTitle.value    = '';
@@ -517,6 +527,8 @@ function openTaskModal(id = null) {
     el.taskAssigned.value = today();
     el.taskDue.value      = '';
     el.taskTags.value     = '';
+    $('taskReminder').value = '';
+    $('taskRepeat').value   = 'none';
   }
 
   el.taskModal.classList.add('open');
@@ -539,6 +551,8 @@ async function saveTask() {
     assignee: el.taskAssignee.value, priority: el.taskPriority.value,
     assignedDate: el.taskAssigned.value, dueDate: due, tags,
     company: el.taskCompany.value,
+    reminderTime: $('taskReminder').value,
+    repeat: $('taskRepeat').value,
   };
 
   const currentEditId = App.editId;
@@ -547,6 +561,10 @@ async function saveTask() {
 
   if (currentEditId) {
     const existing = App._tasks.find(t => String(t.id) === String(currentEditId)) || {};
+    // If reminder time changed, reset reminderNotified
+    if (existing.reminderTime !== data.reminderTime) {
+      data.reminderNotified = false;
+    }
     const updated = { ...existing, ...data, id: currentEditId };
     await Storage.saveTask(updated);
     toast('Task updated ✓');
@@ -761,6 +779,8 @@ function openDrawer(id) {
     ${t.completedAt ? `<div class="d-field"><div class="d-label">Completed</div><div class="d-val">${fmtDatetime(t.completedAt)}</div></div>` : ''}
     ${t.description ? `<div class="d-field"><div class="d-label">Description</div><div class="d-desc" style="margin-top:4px">${esc(t.description)}</div></div>` : ''}
     ${t.company ? (() => { const co = App._companies.find(c => String(c.id) === String(t.company)); return co ? `<div class="d-field"><div class="d-label">Company</div><div class="d-val">${esc(co.name)}</div></div>` : ''; })() : ''}
+    ${t.reminderTime ? `<div class="d-field"><div class="d-label">Reminder</div><div class="d-val">${fmtDatetime(t.reminderTime)}</div></div>` : ''}
+    ${t.repeat && t.repeat !== 'none' ? `<div class="d-field"><div class="d-label">Repeat</div><div class="d-val">${capFirst(t.repeat)}</div></div>` : ''}
     ${(t.tags||[]).length ? `<div class="d-field"><div class="d-label">Tags</div><div class="t-tags" style="margin-top:4px">${t.tags.map(g=>`<span class="tag">${esc(g)}</span>`).join('')}</div></div>` : ''}
     <div class="d-field"><div class="d-label">Created</div><div class="d-val">${fmtDatetime(t.createdAt)}</div></div>
     <div class="d-acts">
@@ -782,6 +802,11 @@ function closeDrawer() {
 window.toggleDrawer = async id => {
   const was = App._tasks.find(t => String(t.id) === String(id));
   await Storage.toggleTaskComplete(id);
+  
+  if (!was.completed && was.repeat && was.repeat !== 'none') {
+    await generateNextRepeat(was);
+  }
+
   closeDrawer();
   await refreshCache();
   renderAll();
@@ -1024,6 +1049,85 @@ function animateCounter(el, target) {
     if (p < 1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
+}
+
+// ── REPEAT & REMINDERS ──────────────────────────────────────
+async function generateNextRepeat(task) {
+  if (!task.repeat || task.repeat === 'none') return;
+  
+  let nextDate = new Date(task.dueDate || today());
+  if (task.repeat === 'daily') nextDate.setDate(nextDate.getDate() + 1);
+  else if (task.repeat === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+  else if (task.repeat === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+  else if (task.repeat === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
+  
+  const nextDateStr = toDateStr(nextDate);
+  
+  let nextReminder = '';
+  if (task.reminderTime) {
+    const rDate = new Date(task.reminderTime);
+    if (task.repeat === 'daily') rDate.setDate(rDate.getDate() + 1);
+    else if (task.repeat === 'weekly') rDate.setDate(rDate.getDate() + 7);
+    else if (task.repeat === 'monthly') rDate.setMonth(rDate.getMonth() + 1);
+    else if (task.repeat === 'yearly') rDate.setFullYear(rDate.getFullYear() + 1);
+    
+    const pad = n => String(n).padStart(2, '0');
+    nextReminder = `${rDate.getFullYear()}-${pad(rDate.getMonth()+1)}-${pad(rDate.getDate())}T${pad(rDate.getHours())}:${pad(rDate.getMinutes())}`;
+  }
+
+  const newTask = {
+    ...task,
+    id: undefined,
+    dueDate: nextDateStr,
+    reminderTime: nextReminder,
+    reminderNotified: false,
+    completed: false,
+    completedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  await Storage.saveTask(newTask);
+}
+
+let reminderInterval;
+function startReminderChecker() {
+  if (reminderInterval) clearInterval(reminderInterval);
+  
+  const checkReminders = () => {
+    const now = new Date();
+    let needsUpdate = false;
+    
+    App._tasks.forEach(t => {
+      if (!t.completed && t.reminderTime && !t.reminderNotified) {
+        const rTime = new Date(t.reminderTime);
+        if (now >= rTime) {
+          showReminderPopup(t);
+          t.reminderNotified = true;
+          needsUpdate = true;
+          Storage.saveTask(t);
+        }
+      }
+    });
+    
+    if (needsUpdate) refreshCache();
+  };
+
+  reminderInterval = setInterval(checkReminders, 60000);
+  setTimeout(checkReminders, 2000);
+}
+
+function showReminderPopup(task) {
+  const rp = $('reminderPopup');
+  if (!rp) return;
+  $('rpTaskTitle').textContent = task.title;
+  $('rpTaskDue').textContent = 'Due: ' + (task.dueDate ? fmtDate(task.dueDate) : 'No Date');
+  rp.classList.add('show');
+  
+  if (window.Notification && Notification.permission === 'granted') {
+    new Notification('⏰ Task Reminder', { body: task.title });
+  } else if (window.Notification && Notification.permission !== 'denied') {
+    Notification.requestPermission();
+  }
 }
 
 // DOMContentLoaded is handled at the top of this file via Auth.init()

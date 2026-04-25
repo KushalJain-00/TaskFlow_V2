@@ -812,3 +812,20 @@ input[type="checkbox"] {
   color: var(--text3);
 }
 .signout-btn:hover { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+
+/* ─── REMINDER POPUP ─────────────────────────────────── */
+.reminder-popup {
+  position: fixed; bottom: 80px; left: 50%; z-index: 9999;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--indigo);
+  box-shadow: 0 8px 32px rgba(79,70,229,.2);
+  padding: 14px 18px; border-radius: var(--radius-lg);
+  width: 300px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s cubic-bezier(0.4, 0, 0.2, 1), transform .3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.reminder-popup.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+.rp-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; color: var(--indigo); }
+.rp-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.rp-due { font-size: 12px; color: var(--text3); }
