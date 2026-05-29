@@ -1058,7 +1058,9 @@ async function generateNextRepeat(task) {
   let nextDate = new Date(task.dueDate || today());
   if (task.repeat === 'daily') nextDate.setDate(nextDate.getDate() + 1);
   else if (task.repeat === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
+  else if (task.repeat === 'fortnightly') nextDate.setDate(nextDate.getDate() + 15);
   else if (task.repeat === 'monthly') nextDate.setMonth(nextDate.getMonth() + 1);
+  else if (task.repeat === 'quarterly') nextDate.setMonth(nextDate.getMonth() + 3);
   else if (task.repeat === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
   
   const nextDateStr = toDateStr(nextDate);
@@ -1068,7 +1070,9 @@ async function generateNextRepeat(task) {
     const rDate = new Date(task.reminderTime);
     if (task.repeat === 'daily') rDate.setDate(rDate.getDate() + 1);
     else if (task.repeat === 'weekly') rDate.setDate(rDate.getDate() + 7);
+    else if (task.repeat === 'fortnightly') rDate.setDate(rDate.getDate() + 15);
     else if (task.repeat === 'monthly') rDate.setMonth(rDate.getMonth() + 1);
+    else if (task.repeat === 'quarterly') rDate.setMonth(rDate.getMonth() + 3);
     else if (task.repeat === 'yearly') rDate.setFullYear(rDate.getFullYear() + 1);
     
     const pad = n => String(n).padStart(2, '0');
