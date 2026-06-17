@@ -71,6 +71,22 @@
             </svg>
             Completed <span class="nb nb-green" id="badge-completed">0</span>
           </a></li>
+        <li><a href="#" class="nav-link" data-view="calendar">
+            <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Calendar
+          </a></li>
+        <li><a href="#" class="nav-link" data-view="notes">
+            <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            Sticky Notes
+          </a></li>
       </ul>
 
       <p class="nav-label" style="margin-top:24px">TEAM</p>
@@ -100,6 +116,14 @@
         </svg>
         Export Tasks
       </button>
+
+      <button class="nav-export-btn" id="syncSheetsBtn" style="margin-top:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+          <path d="M21.5 12H16c-.7 2-2 3-4 3s-3.3-1-4-3H2.5" />
+          <path d="M5.5 5.1L2 12v6c0 1.1.9 2 2 2h16a2 2 0 002-2v-6l-3.5-6.9A2 2 0 0017 4H7a2 2 0 00-1.5 1.1z" />
+        </svg>
+        Sync to Sheets
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -109,6 +133,12 @@
           <div class="u-name" id="userNameSidebar">Manager</div>
           <div class="u-role">Admin</div>
         </div>
+        <button class="icon-btn signout-btn" id="settingsBtn" title="Settings" style="margin-right:8px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.6.8.97 1.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>
+        </button>
         <button class="icon-btn signout-btn" onclick="Auth.signOut()" title="Sign out">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
             <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
@@ -149,6 +179,24 @@
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+        <select id="calViewFilter" class="filter-sel" style="display:none;">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="fortnightly">Fortnightly</option>
+          <option value="monthly" selected>Monthly</option>
+        </select>
+        <div id="calModeToggle" class="format-toggle" style="display:none;">
+          <button id="calModeNormal" class="active">Normal</button>
+          <button id="calModeHeatmap">Heatmap</button>
+        </div>
+        <button class="icon-btn" id="notesGridToggle" title="Toggle Grid Mode" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+          </svg>
+        </button>
         <button class="icon-btn" id="voiceBtn" title="Voice to task">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
             <path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z" />
@@ -223,6 +271,30 @@
           <div class="e-title">No tasks here</div>
           <div class="e-sub">Add a task or adjust your filters</div>
         </div>
+      </div>
+    </section>
+
+    <!-- CALENDAR SECTION -->
+    <section class="calendar-section" id="calendarSection" style="display:none;">
+      <div class="cal-toolbar">
+        <button class="icon-btn" id="calPrevBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <button class="btn-ghost" id="calTodayBtn">Today</button>
+        <button class="icon-btn" id="calNextBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="9 18 15 12 9 6" /></svg>
+        </button>
+        <h2 class="cal-title" id="calTitleDisplay">Month Year</h2>
+      </div>
+      <div class="cal-view-container" id="calViewContainer">
+        <!-- Rendered calendar content -->
+      </div>
+    </section>
+
+    <!-- NOTES SECTION -->
+    <section class="notes-section" id="notesSection" style="display:none;">
+      <div class="notes-container freeform" id="notesContainer">
+        <!-- Notes rendered here -->
       </div>
     </section>
   </div>
@@ -427,9 +499,80 @@
     <div class="rp-due" id="rpTaskDue"></div>
   </div>
 
+  <!-- MODAL: SETTINGS -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <div class="modal-hd">
+        <h2 class="modal-ttl">Settings</h2>
+        <button class="icon-btn" id="settingsModalClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="fg">
+          <label class="fl">Google Sheets Webhook URL</label>
+          <input type="text" class="fi" id="webhookUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+          <p style="font-size:12px;color:var(--text-light);margin-top:4px;">Paste the Web App URL from Google Apps Script to enable syncing tasks to Google Sheets.</p>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn-ghost" id="settingsModalCancel">Cancel</button>
+        <button class="btn-primary" id="settingsModalSave">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: NOTE -->
+  <div class="modal-overlay" id="noteModal">
+    <div class="modal modal-sm">
+      <div class="modal-hd">
+        <h2 class="modal-ttl" id="noteModalTitle">New Note</h2>
+        <button class="icon-btn" id="noteModalClose">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="fg">
+          <label class="fl">Title</label>
+          <input type="text" class="fi" id="noteTitle" placeholder="Optional title" />
+        </div>
+        <div class="fg">
+          <label class="fl">Content <span class="req">*</span></label>
+          <textarea class="fi fi-ta" id="noteContent" placeholder="Note text..." rows="4"></textarea>
+        </div>
+        <div class="fg-row">
+          <div class="fg">
+            <label class="fl">Color</label>
+            <select class="fi" id="noteColor">
+              <option value="yellow">Yellow</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="pink">Pink</option>
+              <option value="purple">Purple</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="fl">Pin</label>
+            <select class="fi" id="notePinned">
+              <option value="false">Unpinned</option>
+              <option value="true">Pinned</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-ft">
+        <button class="btn-ghost" id="noteModalCancel">Cancel</button>
+        <button class="btn-primary" id="noteModalSave">Save Note</button>
+      </div>
+    </div>
+  </div>
+
   <script src="auth.js"></script>
   <script src="storage.js"></script>
   <script src="app.js"></script>
 </body>
-
 </html>

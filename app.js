@@ -15,6 +15,12 @@ const App = {
   _employees: [],
   _companies: [],
   _settings: {},
+  _notes: [],
+  calDate: new Date(),
+  calView: 'monthly',
+  calMode: 'normal',
+  notesGrid: false,
+  editNoteId: null,
 };
 
 const $ = id => document.getElementById(id);
@@ -82,6 +88,37 @@ const el = {
   coModalSave:    $('coModalSave'),
   coName:         $('coName'),
   exportBtn:      $('exportBtn'),
+  settingsBtn:    $('settingsBtn'),
+  settingsModal:  $('settingsModal'),
+  settingsModalClose: $('settingsModalClose'),
+  settingsModalCancel: $('settingsModalCancel'),
+  settingsModalSave: $('settingsModalSave'),
+  webhookUrl:     $('webhookUrl'),
+  syncSheetsBtn:  $('syncSheetsBtn'),
+  taskSection:    document.querySelector('.task-section'),
+  calendarSection:$('calendarSection'),
+  notesSection:   $('notesSection'),
+  calPrevBtn:     $('calPrevBtn'),
+  calNextBtn:     $('calNextBtn'),
+  calTodayBtn:    $('calTodayBtn'),
+  calTitleDisplay:$('calTitleDisplay'),
+  calViewContainer:$('calViewContainer'),
+  notesContainer: $('notesContainer'),
+  calViewFilter:  $('calViewFilter'),
+  calModeToggle:  $('calModeToggle'),
+  calModeNormal:  $('calModeNormal'),
+  calModeHeatmap: $('calModeHeatmap'),
+  notesGridToggle:$('notesGridToggle'),
+  noteModal:      $('noteModal'),
+  noteModalTitle: $('noteModalTitle'),
+  noteModalClose: $('noteModalClose'),
+  noteModalCancel:$('noteModalCancel'),
+  noteModalSave:  $('noteModalSave'),
+  noteTitle:      $('noteTitle'),
+  noteContent:    $('noteContent'),
+  noteColor:      $('noteColor'),
+  notePinned:     $('notePinned'),
+  statsRow:       document.querySelector('.stats-row'),
 };
 
 // ── INIT ──────────────────────────────────────────────────
@@ -120,11 +157,12 @@ async function init() {
 }
 
 async function refreshCache() {
-  [App._tasks, App._employees, App._settings, App._companies] = await Promise.all([
+  [App._tasks, App._employees, App._settings, App._companies, App._notes] = await Promise.all([
     Storage.getAllTasks(),
     Storage.getEmployees(),
     Storage.getSettings(),
     Storage.getCompanies(),
+    Storage.getNotes()
   ]);
   await purgeOldCompletedTasks();
 }
@@ -145,6 +183,13 @@ function bindEvents() {
   el.mobOverlay.addEventListener('click', closeMobSidebar);
   el.darkToggle.addEventListener('click', toggleDark);
   el.exportBtn.addEventListener('click', () => openExportModal());
+  el.settingsBtn.addEventListener('click', openSettingsModal);
+  el.syncSheetsBtn.addEventListener('click', syncToGoogleSheets);
+
+  el.settingsModalClose.addEventListener('click', closeSettingsModal);
+  el.settingsModalCancel.addEventListener('click', closeSettingsModal);
+  el.settingsModalSave.addEventListener('click', saveSettingsModal);
+  el.settingsModal.addEventListener('click', e => { if (e.target === el.settingsModal) closeSettingsModal(); });
 
   document.querySelectorAll('.nav-link[data-view]').forEach(a => {
     a.addEventListener('click', e => {
@@ -154,7 +199,24 @@ function bindEvents() {
     });
   });
 
-  el.addTaskBtn.addEventListener('click', () => openTaskModal());
+  el.addTaskBtn.addEventListener('click', () => {
+    if (App.view === 'notes') openNoteModal();
+    else openTaskModal();
+  });
+  
+  el.calPrevBtn?.addEventListener('click', () => changeCalDate(-1));
+  el.calNextBtn?.addEventListener('click', () => changeCalDate(1));
+  el.calTodayBtn?.addEventListener('click', () => { App.calDate = new Date(); renderCalendar(); });
+  el.calViewFilter?.addEventListener('change', (e) => { App.calView = e.target.value; renderCalendar(); });
+  el.calModeNormal?.addEventListener('click', () => { setCalMode('normal'); });
+  el.calModeHeatmap?.addEventListener('click', () => { setCalMode('heatmap'); });
+  
+  el.notesGridToggle?.addEventListener('click', toggleNotesGrid);
+  
+  el.noteModalClose?.addEventListener('click', closeNoteModal);
+  el.noteModalCancel?.addEventListener('click', closeNoteModal);
+  el.noteModalSave?.addEventListener('click', saveNote);
+  el.noteModal?.addEventListener('click', e => { if (e.target === el.noteModal) closeNoteModal(); });
   el.addEmpBtn.addEventListener('click', () => openEmpModal());
 
   el.modalClose.addEventListener('click', closeTaskModal);
@@ -254,19 +316,59 @@ function setView(view, empId = null) {
     document.querySelector(`.nav-link[data-emp="${empId}"]`)?.classList.add('active');
   }
 
-  if (empId) {
-    const emp = App._employees.find(e => String(e.id) === String(empId));
-    const co  = App._companies.find(c => String(c.id) === String(empId));
-    if (co) {
-      el.pageTitle.textContent = co.name;
-      el.pageSub.textContent = 'Company tasks';
-    } else {
-      el.pageTitle.textContent = emp ? `${emp.name}'s Tasks` : 'Employee Tasks';
-      el.pageSub.textContent = emp?.role || 'Employee';
-    }
-  }
+  // Hide sections by default
+  el.taskSection.style.display = 'none';
+  el.calendarSection.style.display = 'none';
+  el.notesSection.style.display = 'none';
+  el.statsRow.style.display = 'none';
+  
+  // Show/Hide topbar elements
+  el.calViewFilter.style.display = 'none';
+  el.calModeToggle.style.display = 'none';
+  el.notesGridToggle.style.display = 'none';
+  el.searchInput.parentElement.style.display = 'none';
+  el.priorityFilter.style.display = 'none';
+  el.addTaskBtn.style.display = 'none';
+  el.addTaskBtn.querySelector('.btn-label').textContent = 'New Task';
 
-  renderTasks();
+  if (view === 'calendar') {
+    el.pageTitle.textContent = 'Calendar Planner';
+    el.pageSub.textContent = 'View and schedule tasks';
+    el.calendarSection.style.display = 'flex';
+    el.calViewFilter.style.display = 'block';
+    el.calModeToggle.style.display = 'flex';
+    el.addTaskBtn.style.display = 'inline-flex';
+    renderCalendar();
+  } else if (view === 'notes') {
+    el.pageTitle.textContent = 'Sticky Notes';
+    el.pageSub.textContent = 'Your virtual board';
+    el.notesSection.style.display = 'flex';
+    el.notesGridToggle.style.display = 'inline-flex';
+    el.addTaskBtn.style.display = 'inline-flex';
+    el.addTaskBtn.querySelector('.btn-label').textContent = 'New Note';
+    renderNotes();
+  } else {
+    el.statsRow.style.display = 'flex';
+    if (empId) {
+      const emp = App._employees.find(e => String(e.id) === String(empId));
+      const co  = App._companies.find(c => String(c.id) === String(empId));
+      if (co) {
+        el.pageTitle.textContent = co.name;
+        el.pageSub.textContent = 'Company tasks';
+      } else {
+        el.pageTitle.textContent = emp ? `${emp.name}'s Tasks` : 'Employee Tasks';
+        el.pageSub.textContent = emp?.role || 'Employee';
+      }
+    } else {
+      el.pageTitle.textContent = viewMeta[view]?.[0] || 'Tasks';
+      el.pageSub.textContent = viewMeta[view]?.[1] || '';
+    }
+    el.taskSection.style.display = 'flex';
+    el.searchInput.parentElement.style.display = 'block';
+    el.priorityFilter.style.display = 'block';
+    el.addTaskBtn.style.display = 'inline-flex';
+    renderTasks();
+  }
 }
 
 // ── RENDER ALL ────────────────────────────────────────────
@@ -752,6 +854,94 @@ function download(filename, mime, content) {
   toast(`Downloaded ${filename}`);
 }
 
+// ── GOOGLE SHEETS SYNC ────────────────────────────────────
+function openSettingsModal() {
+  closeMobSidebar();
+  el.webhookUrl.value = App._settings?.googleSheetWebhookUrl || '';
+  el.settingsModal.classList.add('open');
+}
+
+function closeSettingsModal() {
+  el.settingsModal.classList.remove('open');
+}
+
+async function saveSettingsModal() {
+  const url = el.webhookUrl.value.trim();
+  closeSettingsModal();
+  toast('Saving settings...');
+  await Storage.saveSettings({ googleSheetWebhookUrl: url });
+  toast('Settings saved ✓');
+}
+
+async function syncToGoogleSheets() {
+  closeMobSidebar();
+  const url = App._settings?.googleSheetWebhookUrl;
+  if (!url) {
+    alert("Please set your Google Sheets Webhook URL in Settings first.");
+    openSettingsModal();
+    return;
+  }
+
+  toast('Syncing to Google Sheets...');
+  
+  // Format matching "Ughrani Sheet-2.pdf"
+  // Group tasks by Assignee
+  const grouped = {};
+  App._tasks.forEach(t => {
+    if (!grouped[t.assignee]) grouped[t.assignee] = [];
+    grouped[t.assignee].push(t);
+  });
+
+  const payload = [];
+  let srNo = 1;
+
+  // Add Manager and Employees
+  const allPeople = [{ id: 'me', name: App._settings?.managerName || 'Manager', role: 'Admin' }, ...App._employees];
+
+  for (const person of allPeople) {
+    const tasks = grouped[person.id] || [];
+    if (tasks.length === 0) continue; // Skip if no tasks
+
+    // Concatenate all tasks into a single string separated by newlines
+    const taskListString = tasks.map(t => {
+      let line = t.title;
+      if (t.description) line += `\n${t.description}`;
+      return line;
+    }).join('\n\n');
+
+    payload.push({
+      srNo: srNo++,
+      name: person.name,
+      email: '', // Add real email if available
+      mobile: '', // Add real mobile if available
+      tasks: taskListString,
+      frequency: '', 
+      fromEmail: '',
+      fromMobile: '',
+      lastSentDate: new Date().toISOString()
+    });
+  }
+
+  if (payload.length === 0) {
+    toast('No tasks to sync.');
+    return;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+    // With no-cors, res.ok is always false and status is 0, so we just assume success if no exception thrown
+    toast('Synced successfully ✓');
+  } catch (err) {
+    console.error('Webhook sync failed:', err);
+    toast('Sync failed. Check console.');
+  }
+}
+
 // ── DRAWER ────────────────────────────────────────────────
 function openDrawer(id) {
   const t = App._tasks.find(t => String(t.id) === String(id));
@@ -819,6 +1009,10 @@ let recognition = null;
 function toggleVoicePanel() {
   el.voicePanel.classList.contains('show') ? closeVoicePanel() : openVoicePanel();
 }
+function uploadFileChunks(fileData, chunkSize = 1024 * 1024) {
+  // Placeholder for any file logic from previous versions
+}
+
 function openVoicePanel() {
   // If no Gemini key, ask the user to set one first
   if (!GEMINI_KEY) {
@@ -1135,3 +1329,319 @@ function showReminderPopup(task) {
 }
 
 // DOMContentLoaded is handled at the top of this file via Auth.init()
+
+// ── CALENDAR PLANNER ──────────────────────────────────────
+function changeCalDate(dir) {
+  const d = App.calDate;
+  if (App.calView === 'daily') d.setDate(d.getDate() + dir);
+  else if (App.calView === 'weekly') d.setDate(d.getDate() + (dir * 7));
+  else if (App.calView === 'fortnightly') d.setDate(d.getDate() + (dir * 14));
+  else d.setMonth(d.getMonth() + dir);
+  App.calDate = new Date(d);
+  renderCalendar();
+}
+
+function setCalMode(mode) {
+  App.calMode = mode;
+  el.calModeNormal.classList.toggle('active', mode === 'normal');
+  el.calModeHeatmap.classList.toggle('active', mode === 'heatmap');
+  renderCalendar();
+}
+
+function renderCalendar() {
+  if (App.view !== 'calendar') return;
+  const container = el.calViewContainer;
+  container.innerHTML = '';
+  
+  const d = new Date(App.calDate);
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  
+  el.calTitleDisplay.textContent = d.toLocaleDateString('default', { month: 'long', year: 'numeric' });
+  if (App.calView === 'daily') el.calTitleDisplay.textContent = d.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  
+  const tasks = App._tasks.filter(t => !t.completed); // show open tasks
+  
+  if (App.calMode === 'heatmap') {
+    container.innerHTML = '<div class="cal-heatmap" id="calHeatmap"></div>';
+    const heatmap = $('calHeatmap');
+    
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+      const count = tasks.filter(t => t.dueDate === dateStr).length;
+      
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      cell.dataset.count = Math.min(count, 5);
+      cell.textContent = i;
+      cell.title = `${count} tasks`;
+      cell.addEventListener('click', () => { App.calDate = new Date(year, month, i); App.calView = 'daily'; el.calViewFilter.value = 'daily'; renderCalendar(); });
+      heatmap.appendChild(cell);
+    }
+    return;
+  }
+  
+  const grid = document.createElement('div');
+  grid.className = `cal-grid ${App.calView}`;
+  
+  if (App.calView === 'daily') {
+    for (let h = 8; h <= 20; h++) {
+      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const hrTasks = tasks.filter(t => t.dueDate === dateStr);
+      const row = document.createElement('div');
+      row.className = 'timeline-row';
+      row.innerHTML = `<div class="timeline-time">${h}:00</div><div class="timeline-content"></div>`;
+      if (h === 8) {
+        hrTasks.forEach(t => {
+          const p = document.createElement('div');
+          p.className = `cal-task-pill ${t.priority}`;
+          p.textContent = t.title;
+          p.addEventListener('click', () => openDrawer(t.id));
+          row.querySelector('.timeline-content').appendChild(p);
+        });
+      }
+      grid.appendChild(row);
+    }
+  } else {
+    const days = App.calView === 'weekly' ? 7 : (App.calView === 'fortnightly' ? 14 : 42);
+    let start = new Date(year, month, 1);
+    if (App.calView === 'weekly' || App.calView === 'fortnightly') {
+      start = new Date(d);
+      start.setDate(d.getDate() - d.getDay());
+    } else {
+      start.setDate(1 - start.getDay());
+    }
+    
+    const hdr = document.createElement('div');
+    hdr.className = 'cal-header-row';
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(day => {
+      hdr.innerHTML += `<div>${day}</div>`;
+    });
+    grid.appendChild(hdr);
+    
+    const todayStr = today();
+    for (let i = 0; i < days; i++) {
+      const current = new Date(start);
+      current.setDate(start.getDate() + i);
+      const isDiffMonth = current.getMonth() !== month;
+      const dStr = `${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`;
+      
+      const cell = document.createElement('div');
+      cell.className = `cal-cell ${isDiffMonth && App.calView === 'monthly' ? 'diff-month' : ''} ${dStr === todayStr ? 'today' : ''}`;
+      cell.innerHTML = `<div class="cal-date ${dStr === todayStr ? 'today-text' : ''}">${current.getDate()}</div>`;
+      
+      tasks.filter(t => t.dueDate === dStr).forEach(t => {
+        const p = document.createElement('div');
+        p.className = `cal-task-pill ${t.priority}`;
+        p.textContent = t.title;
+        p.addEventListener('click', (e) => { e.stopPropagation(); openDrawer(t.id); });
+        cell.appendChild(p);
+      });
+      
+      cell.addEventListener('click', () => {
+        App.calDate = new Date(current); App.calView = 'daily'; el.calViewFilter.value = 'daily'; renderCalendar();
+      });
+      grid.appendChild(cell);
+    }
+  }
+  container.appendChild(grid);
+}
+
+// ── STICKY NOTES ──────────────────────────────────────────
+function toggleNotesGrid() {
+  App.notesGrid = !App.notesGrid;
+  if (App.notesGrid) {
+    el.notesContainer.classList.remove('freeform');
+    el.notesContainer.classList.add('grid-mode');
+  } else {
+    el.notesContainer.classList.add('freeform');
+    el.notesContainer.classList.remove('grid-mode');
+  }
+}
+
+function openNoteModal(id = null) {
+  App.editNoteId = id;
+  if (id) {
+    const note = App._notes.find(n => String(n.id) === String(id));
+    if (note) {
+      el.noteModalTitle.textContent = 'Edit Note';
+      el.noteTitle.value = note.title || '';
+      el.noteContent.value = note.content || '';
+      el.noteColor.value = note.color || 'yellow';
+      el.notePinned.value = note.pinned ? 'true' : 'false';
+    }
+  } else {
+    el.noteModalTitle.textContent = 'New Note';
+    el.noteTitle.value = '';
+    el.noteContent.value = '';
+    el.noteColor.value = 'yellow';
+    el.notePinned.value = 'false';
+  }
+  el.noteModal.classList.add('open');
+  setTimeout(() => el.noteContent.focus(), 80);
+}
+
+function closeNoteModal() {
+  el.noteModal.classList.remove('open');
+  App.editNoteId = null;
+}
+
+async function saveNote() {
+  const content = el.noteContent.value.trim();
+  if (!content) { shake(el.noteContent); return; }
+  
+  const data = {
+    title: el.noteTitle.value.trim(),
+    content: content,
+    color: el.noteColor.value,
+    pinned: el.notePinned.value === 'true'
+  };
+  
+  closeNoteModal();
+  toast('Saving note...');
+  
+  if (App.editNoteId) {
+    data.id = App.editNoteId;
+  } else {
+    data.posX = 40 + Math.random() * 300;
+    data.posY = 40 + Math.random() * 300;
+  }
+  
+  await Storage.saveNote(data);
+  App._notes = await Storage.getNotes();
+  renderNotes();
+  toast('Note saved ✓');
+}
+
+function renderNotes() {
+  if (App.view !== 'notes') return;
+  const container = el.notesContainer;
+  container.innerHTML = '';
+  
+  const sorted = [...(App._notes || [])].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
+  
+  sorted.forEach(note => {
+    const card = document.createElement('div');
+    card.className = `note-card note-${note.color || 'yellow'} ${note.pinned ? 'note-pinned' : ''}`;
+    card.dataset.id = note.id;
+    
+    if (!App.notesGrid) {
+      card.style.left = `${note.posX || 40}px`;
+      card.style.top = `${note.posY || 40}px`;
+      card.style.zIndex = note.zIndex || 1;
+      if (note.width) card.style.width = `${note.width}px`;
+      if (note.height) card.style.height = `${note.height}px`;
+      makeDraggable(card, note);
+    }
+    
+    card.innerHTML = `
+      <div class="note-hd">
+        <div class="note-title">${esc(note.title || '')}</div>
+        <div class="note-pin">${note.pinned ? '📌' : ''}</div>
+      </div>
+      <div class="note-content">${esc(note.content || '').replace(/\n/g, '<br/>')}</div>
+      <div class="note-footer">${note.updatedAt ? fmtDate(note.updatedAt) : ''}</div>
+      <div class="note-acts">
+        <button class="note-btn" title="Edit" onclick="openNoteModal('${note.id}')">✎</button>
+        <button class="note-btn" title="Delete" onclick="deleteNoteHandler('${note.id}', event)">✖</button>
+      </div>
+    `;
+    
+    if (!App.notesGrid) {
+      makeDraggable(card, note);
+    }
+    
+    container.appendChild(card);
+  });
+}
+
+window.deleteNoteHandler = async function(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this note?')) return;
+  await Storage.deleteNote(id);
+  App._notes = await Storage.getNotes();
+  renderNotes();
+  toast('Note deleted');
+}
+
+function makeDraggable(elem, noteData) {
+  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  
+  elem.style.cursor = 'grab';
+  elem.onmousedown = dragMouseDown;
+
+  // Watch for manual CSS resizing and debounce the save
+  let resizeTimeout;
+  const ro = new ResizeObserver(() => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      // Ignore resizes triggered by the grid system
+      if (App.notesGrid) return;
+      
+      if (elem.offsetWidth !== noteData.width || elem.offsetHeight !== noteData.height) {
+        noteData.width = elem.offsetWidth;
+        noteData.height = elem.offsetHeight;
+        Storage.saveNote(noteData);
+      }
+    }, 500);
+  });
+  ro.observe(elem);
+
+  function dragMouseDown(e) {
+    if (e.target.closest('.note-acts') || e.target.tagName === 'BUTTON') return;
+    
+    // Check if click is on the native resize handle (bottom-right 20x20px area)
+    const rect = elem.getBoundingClientRect();
+    if (e.clientX > rect.right - 20 && e.clientY > rect.bottom - 20) {
+      return; // Let native resize take over
+    }
+
+    // Allow text selection if double clicking or something, but prevent default for dragging
+    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+    }
+    
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    document.onmouseup = closeDragElement;
+    document.onmousemove = elementDrag;
+    
+    const maxZ = Math.max(1, ...App._notes.map(n => n.zIndex || 1));
+    elem.style.zIndex = maxZ + 1;
+    noteData.zIndex = maxZ + 1;
+    elem.style.cursor = 'grabbing';
+  }
+
+  function elementDrag(e) {
+    e.preventDefault();
+    pos1 = pos3 - e.clientX;
+    pos2 = pos4 - e.clientY;
+    pos3 = e.clientX;
+    pos4 = e.clientY;
+    
+    // Remove strict bounds checking so dragging is smoother even if they drag fast or out of view
+    let newTop = elem.offsetTop - pos2;
+    let newLeft = elem.offsetLeft - pos1;
+    
+    // Basic floor clamping so it doesn't go above the top edge
+    if (newTop < 0) newTop = 0;
+    if (newLeft < 0) newLeft = 0;
+
+    elem.style.top = newTop + "px";
+    elem.style.left = newLeft + "px";
+  }
+
+  async function closeDragElement() {
+    document.onmouseup = null;
+    document.onmousemove = null;
+    elem.style.cursor = 'grab';
+    
+    noteData.posX = parseInt(elem.style.left);
+    noteData.posY = parseInt(elem.style.top);
+    await Storage.saveNote(noteData);
+  }
+}

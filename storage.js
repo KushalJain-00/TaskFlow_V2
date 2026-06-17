@@ -1,6 +1,6 @@
 const Storage = (() => {
 
-  let _cache = { tasks: null, employees: null, settings: null, companies: null };
+  let _cache = { tasks: null, employees: null, settings: null, companies: null, notes: null };
 
   function _headers() {
     const token = (typeof Auth !== 'undefined') ? Auth.getAccessToken() : SUPABASE_KEY;
@@ -143,11 +143,49 @@ const Storage = (() => {
     await _upsert('settings', updated);
   }
 
+  async function getNotes() { 
+    if (!_cache.notes) {
+      const stored = localStorage.getItem('tf_notes');
+      _cache.notes = stored ? JSON.parse(stored) : [];
+    }
+    return _cache.notes;
+  }
+
+  async function saveNote(noteData) {
+    const notes = await getNotes();
+    const now = new Date().toISOString();
+    
+    if (noteData.id) {
+      const existing = notes.find(n => String(n.id) === String(noteData.id));
+      if (existing) {
+        Object.assign(existing, noteData, { updatedAt: now });
+      }
+    } else {
+      const newNote = {
+        id: _id(), title: '', content: '', color: 'yellow',
+        pinned: false, tags: [], posX: 50, posY: 50, zIndex: 1,
+        createdAt: now, updatedAt: now, ...noteData,
+      };
+      notes.push(newNote);
+    }
+    
+    _cache.notes = notes;
+    localStorage.setItem('tf_notes', JSON.stringify(notes));
+  }
+
+  async function deleteNote(id) {
+    let notes = await getNotes();
+    notes = notes.filter(n => String(n.id) !== String(id));
+    _cache.notes = notes;
+    localStorage.setItem('tf_notes', JSON.stringify(notes));
+  }
+
   return {
     getAllTasks, getTaskById, saveTask, deleteTask, toggleTaskComplete,
     getEmployees, saveEmployee, deleteEmployee,
     getCompanies, saveCompany, deleteCompany,
     getSettings, saveSettings,
+    getNotes, saveNote, deleteNote,
   };
 
 })();
