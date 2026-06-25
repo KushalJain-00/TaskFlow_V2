@@ -908,7 +908,7 @@ async function syncToGoogleSheets() {
       let line = t.title;
       if (t.description) line += `\n${t.description}`;
       return line;
-    }).join('\n\n');
+    }).join('\n');
 
     payload.push({
       srNo: srNo++,
@@ -919,7 +919,7 @@ async function syncToGoogleSheets() {
       frequency: '', 
       fromEmail: '',
       fromMobile: '',
-      lastSentDate: new Date().toISOString()
+      lastSentDate: new Date().toLocaleDateString('en-GB')
     });
   }
 
