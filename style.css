@@ -165,16 +165,19 @@ body { background: var(--bg); color: var(--text); display: flex; }
   flex-shrink: 0;
 }
 
-.emp-del {
-  margin-left: auto; background: none; border: none;
+.emp-del, .emp-edit {
+  background: none; border: none;
   color: var(--text3); cursor: pointer; font-size: 15px;
   width: 18px; height: 18px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity .13s, background .13s, color .13s;
   flex-shrink: 0;
 }
-.nav-link:hover .emp-del { opacity: 1; }
+.emp-edit { margin-left: auto; font-size: 12px; }
+.emp-del { margin-left: 2px; }
+.nav-link:hover .emp-del, .nav-link:hover .emp-edit { opacity: 1; }
 .emp-del:hover { background: var(--red-bg); color: var(--red); }
+.emp-edit:hover { background: var(--surface2); color: var(--text); }
 
 .add-emp-btn {
   display: flex; align-items: center; gap: 7px;
