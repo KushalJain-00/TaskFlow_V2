@@ -62,6 +62,10 @@ const el = {
   empModalSave:   $('empModalSave'),
   empName:        $('empName'),
   empRole:        $('empRole'),
+  empEmail:       $('empEmail'),
+  empMobile:      $('empMobile'),
+  empId:          $('empId'),
+  empModalTitleText: $('empModalTitleText'),
   drawerBg:       $('drawerBg'),
   drawer:         $('taskDrawer'),
   drawerClose:    $('drawerClose'),
@@ -87,6 +91,10 @@ const el = {
   coModalCancel:  $('coModalCancel'),
   coModalSave:    $('coModalSave'),
   coName:         $('coName'),
+  coEmail:        $('coEmail'),
+  coMobile:       $('coMobile'),
+  coId:           $('coId'),
+  coModalTitleText: $('coModalTitleText'),
   exportBtn:      $('exportBtn'),
   settingsBtn:    $('settingsBtn'),
   settingsModal:  $('settingsModal'),
@@ -393,10 +401,11 @@ function renderEmpNav() {
         <div class="av-nav" style="background:${strColor(emp.name)}">${emp.name[0].toUpperCase()}</div>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(emp.name)}</span>
         ${open ? `<span class="nb">${open}</span>` : ''}
+        <button class="emp-edit" data-id="${emp.id}" title="Edit" style="margin-right: 4px;">✎</button>
         <button class="emp-del" data-id="${emp.id}" title="Remove">×</button>
       </a>`;
     li.querySelector('.nav-link-emp').addEventListener('click', e => {
-      if (e.target.classList.contains('emp-del')) return;
+      if (e.target.classList.contains('emp-del') || e.target.classList.contains('emp-edit')) return;
       e.preventDefault();
       setView('employee', emp.id);
       closeMobSidebar();
@@ -410,6 +419,10 @@ function renderEmpNav() {
       await refreshCache();
       renderAll();
       toast(`${emp.name} removed`);
+    });
+    li.querySelector('.emp-edit').addEventListener('click', e => {
+      e.stopPropagation();
+      openEmpModal(emp.id);
     });
     el.employeeNav.appendChild(li);
   });
@@ -437,10 +450,11 @@ function renderCompanyNav() {
         <svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="15" rx="1.5"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${esc(co.name)}</span>
         ${count ? `<span class="nb">${count}</span>` : ''}
+        <button class="emp-edit" data-id="${co.id}" title="Edit" style="margin-right: 4px;">✎</button>
         <button class="emp-del" data-id="${co.id}" title="Remove">×</button>
       </a>`;
     li.querySelector('.nav-link-co').addEventListener('click', e => {
-      if (e.target.classList.contains('emp-del')) return;
+      if (e.target.classList.contains('emp-del') || e.target.classList.contains('emp-edit')) return;
       e.preventDefault();
       setView('company', co.id);
       closeMobSidebar();
@@ -455,6 +469,10 @@ function renderCompanyNav() {
       await refreshCache();
       renderAll();
       toast(`${co.name} removed`);
+    });
+    li.querySelector('.emp-edit').addEventListener('click', e => {
+      e.stopPropagation();
+      openCoModal(co.id);
     });
     el.companyNav.appendChild(li);
   });
@@ -680,8 +698,24 @@ async function saveTask() {
 }
 
 // ── EMPLOYEE MODAL ────────────────────────────────────────
-function openEmpModal() {
-  el.empName.value = ''; el.empRole.value = '';
+function openEmpModal(id = null) {
+  if (id) {
+    const emp = App._employees.find(e => e.id === id);
+    if (emp) {
+      el.empId.value = emp.id;
+      el.empName.value = emp.name || '';
+      el.empRole.value = emp.role || '';
+      el.empEmail.value = emp.email || '';
+      el.empMobile.value = emp.mobile || '';
+      el.empModalTitleText.textContent = 'Edit Employee';
+      el.empModalSave.textContent = 'Save Changes';
+    }
+  } else {
+    el.empId.value = '';
+    el.empName.value = ''; el.empRole.value = ''; el.empEmail.value = ''; el.empMobile.value = '';
+    el.empModalTitleText.textContent = 'Add Employee';
+    el.empModalSave.textContent = 'Add';
+  }
   el.empModal.classList.add('open');
   setTimeout(() => el.empName.focus(), 80);
 }
@@ -690,17 +724,42 @@ function closeEmpModal() { el.empModal.classList.remove('open'); }
 async function saveEmployee() {
   const name = el.empName.value.trim();
   if (!name) { shake(el.empName); return; }
+  
+  const empData = {
+    name,
+    role: el.empRole.value.trim(),
+    email: el.empEmail.value.trim(),
+    mobile: el.empMobile.value.trim()
+  };
+  const id = el.empId.value;
+  if (id) empData.id = id;
+
   closeEmpModal();
   toast('Saving…');
-  await Storage.saveEmployee({ name, role: el.empRole.value.trim() });
+  await Storage.saveEmployee(empData);
   await refreshCache();
   renderAll();
-  toast(`${name} added ✓`);
+  toast(`${name} saved ✓`);
 }
 
 // ── COMPANY MODAL ────────────────────────────────────────
-function openCoModal() {
-  el.coName.value = '';
+function openCoModal(id = null) {
+  if (id) {
+    const co = App._companies.find(c => c.id === id);
+    if (co) {
+      el.coId.value = co.id;
+      el.coName.value = co.name || '';
+      el.coEmail.value = co.email || '';
+      el.coMobile.value = co.mobile || '';
+      el.coModalTitleText.textContent = 'Edit Company';
+      el.coModalSave.textContent = 'Save Changes';
+    }
+  } else {
+    el.coId.value = '';
+    el.coName.value = ''; el.coEmail.value = ''; el.coMobile.value = '';
+    el.coModalTitleText.textContent = 'Add Company';
+    el.coModalSave.textContent = 'Add';
+  }
   el.coModal.classList.add('open');
   setTimeout(() => el.coName.focus(), 80);
 }
@@ -709,12 +768,21 @@ function closeCoModal() { el.coModal.classList.remove('open'); }
 async function saveCompany() {
   const name = el.coName.value.trim();
   if (!name) { shake(el.coName); return; }
+  
+  const coData = {
+    name,
+    email: el.coEmail.value.trim(),
+    mobile: el.coMobile.value.trim()
+  };
+  const id = el.coId.value;
+  if (id) coData.id = id;
+
   closeCoModal();
   toast('Saving…');
-  await Storage.saveCompany({ name });
+  await Storage.saveCompany(coData);
   await refreshCache();
   renderAll();
-  toast(`${name} added ✓`);
+  toast(`${name} saved ✓`);
 }
 
 let exportFormat = 'csv';
@@ -913,8 +981,8 @@ async function syncToGoogleSheets() {
     payload.push({
       srNo: srNo++,
       name: person.name,
-      email: '', // Add real email if available
-      mobile: '', // Add real mobile if available
+      email: person.email || '', 
+      mobile: person.mobile || '', 
       tasks: taskListString,
       frequency: '', 
       fromEmail: '',

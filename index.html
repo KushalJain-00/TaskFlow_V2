@@ -421,7 +421,7 @@
   <div class="modal-overlay" id="employeeModal">
     <div class="modal modal-sm">
       <div class="modal-hd">
-        <h2 class="modal-ttl">Add Employee</h2>
+        <h2 class="modal-ttl"><span id="empModalTitleText">Add Employee</span></h2>
         <button class="icon-btn" id="empModalClose">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
             <path d="M18 6L6 18M6 6l12 12" />
@@ -437,6 +437,15 @@
           <label class="fl">Role</label>
           <input type="text" class="fi" id="empRole" placeholder="e.g. Designer" />
         </div>
+        <div class="fg">
+          <label class="fl">Email</label>
+          <input type="email" class="fi" id="empEmail" placeholder="e.g. name@company.com" />
+        </div>
+        <div class="fg">
+          <label class="fl">Mobile</label>
+          <input type="tel" class="fi" id="empMobile" placeholder="e.g. +1 234 567 8900" />
+        </div>
+        <input type="hidden" id="empId" />
       </div>
       <div class="modal-ft">
         <button class="btn-ghost" id="empModalCancel">Cancel</button>
@@ -449,7 +458,7 @@
   <div class="modal-overlay" id="companyModal">
     <div class="modal modal-sm">
       <div class="modal-hd">
-        <h2 class="modal-ttl">Add Company</h2>
+        <h2 class="modal-ttl"><span id="coModalTitleText">Add Company</span></h2>
         <button class="icon-btn" id="coModalClose">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
             <path d="M18 6L6 18M6 6l12 12" />
@@ -461,6 +470,15 @@
           <label class="fl">Company Name <span class="req">*</span></label>
           <input type="text" class="fi" id="coName" placeholder="e.g. Acme Corp" />
         </div>
+        <div class="fg">
+          <label class="fl">Email</label>
+          <input type="email" class="fi" id="coEmail" placeholder="e.g. contact@acme.com" />
+        </div>
+        <div class="fg">
+          <label class="fl">Mobile / Phone</label>
+          <input type="tel" class="fi" id="coMobile" placeholder="e.g. +1 234 567 8900" />
+        </div>
+        <input type="hidden" id="coId" />
       </div>
       <div class="modal-ft">
         <button class="btn-ghost" id="coModalCancel">Cancel</button>
