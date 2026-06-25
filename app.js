@@ -870,6 +870,7 @@ async function saveSettingsModal() {
   closeSettingsModal();
   toast('Saving settings...');
   await Storage.saveSettings({ googleSheetWebhookUrl: url });
+  App._settings.googleSheetWebhookUrl = url;  // update in-memory so sync works immediately
   toast('Settings saved ✓');
 }
 
