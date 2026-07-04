@@ -1527,6 +1527,7 @@ function toggleNotesGrid() {
     el.notesContainer.classList.add('freeform');
     el.notesContainer.classList.remove('grid-mode');
   }
+  renderNotes();
 }
 
 function openNoteModal(id = null) {
