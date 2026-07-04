@@ -962,7 +962,7 @@ input[type="checkbox"] {
   position: relative; padding: 24px;
 }
 .notes-container.freeform {
-  overflow: hidden; /* Handle overflow via drag boundaries */
+  overflow: auto; /* Allow scrolling when filled with notes */
 }
 .notes-container.grid-mode {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

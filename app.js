@@ -1567,11 +1567,12 @@ async function saveNote() {
     pinned: el.notePinned.value === 'true'
   };
   
+  const currentEditId = App.editNoteId;
   closeNoteModal();
   toast('Saving note...');
   
-  if (App.editNoteId) {
-    data.id = App.editNoteId;
+  if (currentEditId) {
+    data.id = currentEditId;
   } else {
     data.posX = 40 + Math.random() * 300;
     data.posY = 40 + Math.random() * 300;
@@ -1613,7 +1614,7 @@ function renderNotes() {
         <div class="note-pin">${note.pinned ? '📌' : ''}</div>
       </div>
       <div class="note-content">${esc(note.content || '').replace(/\n/g, '<br/>')}</div>
-      <div class="note-footer">${note.updatedAt ? fmtDate(note.updatedAt) : ''}</div>
+      <div class="note-footer">${note.updatedAt ? fmtDatetime(note.updatedAt) : ''}</div>
       <div class="note-acts">
         <button class="note-btn" title="Edit" onclick="openNoteModal('${note.id}')">✎</button>
         <button class="note-btn" title="Delete" onclick="deleteNoteHandler('${note.id}', event)">✖</button>
