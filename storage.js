@@ -87,7 +87,16 @@ const Storage = (() => {
     return newTask;
   }
 
-  async function deleteTask(id) { await _delete('tasks', id); }
+  async function deleteTask(id) {
+    const tasks = await getAllTasks();
+    const toDelete = tasks.find(t => String(t.id) === String(id));
+    if (toDelete) {
+      const deletedQueue = JSON.parse(localStorage.getItem('tf_deleted_tasks') || '[]');
+      deletedQueue.push({ assignee: toDelete.assignee, title: toDelete.title });
+      localStorage.setItem('tf_deleted_tasks', JSON.stringify(deletedQueue));
+    }
+    await _delete('tasks', id);
+  }
 
   async function toggleTaskComplete(id) {
     const task = (await getAllTasks()).find(t => String(t.id) === String(id));

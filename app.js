@@ -971,12 +971,7 @@ async function syncToGoogleSheets() {
     const tasks = grouped[person.id] || [];
     if (tasks.length === 0) continue; // Skip if no tasks
 
-    // Concatenate all tasks into a single string separated by newlines
-    const taskListString = tasks.map(t => {
-      let line = t.title;
-      if (t.description) line += `\n${t.description}`;
-      return line;
-    }).join('\n');
+    const taskListString = tasks.map(t => t.title).join('\n');
 
     payload.push({
       srNo: srNo++,
@@ -1004,6 +999,7 @@ async function syncToGoogleSheets() {
       body: JSON.stringify(payload)
     });
     // With no-cors, res.ok is always false and status is 0, so we just assume success if no exception thrown
+    localStorage.setItem('tf_deleted_tasks', '[]');
     toast('Synced successfully ✓');
   } catch (err) {
     console.error('Webhook sync failed:', err);
