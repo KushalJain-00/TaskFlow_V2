@@ -957,6 +957,7 @@ async function syncToGoogleSheets() {
   // Group tasks by Assignee
   const grouped = {};
   App._tasks.forEach(t => {
+    if (t.completed) return;
     if (!grouped[t.assignee]) grouped[t.assignee] = [];
     grouped[t.assignee].push(t);
   });
