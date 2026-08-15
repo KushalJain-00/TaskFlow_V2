@@ -970,8 +970,6 @@ async function syncToGoogleSheets() {
 
   for (const person of allPeople) {
     const tasks = grouped[person.id] || [];
-    if (tasks.length === 0) continue; // Skip if no tasks
-
     const taskListString = tasks.map(t => t.title).join('\n');
 
     payload.push({
@@ -988,7 +986,7 @@ async function syncToGoogleSheets() {
   }
 
   if (payload.length === 0) {
-    toast('No tasks to sync.');
+    toast('No people to sync.');
     return;
   }
 
